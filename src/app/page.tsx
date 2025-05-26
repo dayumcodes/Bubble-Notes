@@ -25,6 +25,7 @@ import {
 } from "@/lib/color-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/LoadingSpinner"; // Import the spinner
+import React from "react";
 
 const initialNotesData: Note[] = [
   { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true, status: 'active' },
@@ -594,8 +595,17 @@ export default function HomePage() {
                     <Filter className="h-5 w-5" />
                 </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-0 border-none shadow-2xl bg-transparent" sideOffset={10}>
-                <FilterControls />
+                <PopoverContent 
+                    className="w-80 p-0 border-none shadow-2xl bg-transparent" 
+                    sideOffset={10}
+                    onInteractOutside={(event) => {
+                        // Prevent closing if the interaction is with the color picker
+                        if (event.target && (event.target as HTMLElement).closest('input[type="color"]')) {
+                            event.preventDefault();
+                        }
+                    }}
+                >
+                    <FilterControls />
                 </PopoverContent>
             </Popover>
           </div>
@@ -680,7 +690,7 @@ export default function HomePage() {
 }
 
 // Helper function for highlighting text - can be moved to utils if used elsewhere
-const highlightText = (text: string | null | undefined, highlight: string | null | undefined) => {
+const highlightText = (text: string | null | undefined, highlight: string | null | undefined): React.ReactNode => {
   if (!text) return "";
   if (!highlight || !highlight.trim()) {
     return <>{text}</>;
