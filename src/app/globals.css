@@ -42,10 +42,11 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Bubble View Specific */
+    /* Bubble View Specific - Light Mode */
     --bubble-bg-start-light: 200 100% 92%; /* Light Pastel Blue */
     --bubble-bg-end-light: 320 100% 92%;   /* Light Pastel Pink/Purple */
-    --bubble-glow-light: 260 100% 80%; /* Lavender glow */
+    --bubble-glow-light: 240 10% 40%; /* Darker, desaturated color for the border shadow effect (first part of boxShadow) */
+    --bubble-glow-dark: 260 100% 80%; /* Softer, lighter Lavender for the glow effect (second part of boxShadow) */
     --bubble-text-light: 231 48% 25%; /* Darker blue for text on light bubbles */
   }
   .dark {
@@ -82,10 +83,11 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Bubble View Specific */
+    /* Bubble View Specific - Dark Mode (UNCHANGED) */
     --bubble-bg-start-dark: 220 30% 15%; /* Darker Pastel Blue */
     --bubble-bg-end-dark: 280 30% 15%;   /* Darker Pastel Purple */
-    --bubble-glow-dark: 260 100% 40%; /* Deeper Lavender glow */
+    --bubble-glow-light: 240 10% 20%; /* Very subtle for dark mode (first part of shadow) */
+    --bubble-glow-dark: 260 100% 40%; /* Deeper Lavender glow (second part of shadow) */
     --bubble-text-dark: 0 0% 85%;
   }
 }
