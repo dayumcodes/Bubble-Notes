@@ -188,9 +188,10 @@
 .modern-filter-button {
   @apply transition-all duration-200 ease-out transform active:scale-95;
   @apply shadow-md hover:shadow-lg rounded-md border border-transparent;
-  @apply bg-background/50 backdrop-blur-sm hover:bg-accent/20;
+  /* Light mode default: */
+  @apply bg-background/50 backdrop-blur-sm hover:bg-accent/30; /* Adjusted hover from /20 to /30 */
 }
-:is(.dark) .modern-filter-button {
+:is(.dark) .modern-filter-button { /* Dark mode override */
    @apply bg-background/20 hover:bg-accent/30;
 }
 
@@ -215,5 +216,4 @@
     transform: translateY(0);
   }
 }
-
     
