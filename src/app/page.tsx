@@ -30,7 +30,7 @@ export default function HomePage() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null);
-  const [layout, setLayout] = useState<LayoutMode>('grid');
+  const [layout, setLayout] = useState<LayoutMode>('bubble'); // Default to bubble view
   
   useEffect(() => {
     // Load notes from localStorage or use initial data
@@ -132,6 +132,16 @@ export default function HomePage() {
             />
           </div>
           <div className="flex gap-2">
+             <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setLayout('bubble')} 
+              disabled={layout === 'bubble'}
+              aria-label="Bubble view"
+              title="Bubble View"
+            >
+              <Droplets className="h-5 w-5" />
+            </Button>
             <Button 
               variant="outline" 
               size="icon" 
@@ -151,16 +161,6 @@ export default function HomePage() {
               title="List View"
             >
               <List className="h-5 w-5" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => setLayout('bubble')} 
-              disabled={layout === 'bubble'}
-              aria-label="Bubble view"
-              title="Bubble View"
-            >
-              <Droplets className="h-5 w-5" />
             </Button>
           </div>
         </div>
