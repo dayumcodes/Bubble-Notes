@@ -17,20 +17,24 @@ interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onConfirm: () => void;
+  title?: string;
+  description?: string;
 }
 
 export function DeleteConfirmationDialog({
   isOpen,
   onOpenChange,
   onConfirm,
+  title = "Are you sure?",
+  description = "This action cannot be undone. This will permanently delete your note.",
 }: DeleteConfirmationDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete your note.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

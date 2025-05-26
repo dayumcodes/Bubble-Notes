@@ -6,4 +6,5 @@ export interface Note {
   timestamp: number;
   tags?: string[];
   isPinned?: boolean;
+  status?: 'active' | 'archived' | 'trashed'; // Added status field
 }

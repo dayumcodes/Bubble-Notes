@@ -10,7 +10,7 @@ import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette, Archive, Trash2, ListChecks, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 import { Separator } from "@/components/ui/separator";
@@ -25,11 +25,11 @@ import {
 } from "@/lib/color-utils";
 
 const initialNotesData: Note[] = [
-  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true },
-  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5, tags: ['work', 'project omega'], isPinned: false },
-  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30, tags: ['devlog', 'gamedev'], isPinned: false },
-  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now(), tags: ['todo'], isPinned: true },
-  { id: '5', title: 'Recipe for Pixel Pie', content: 'Ingredients: Digital flour, virtual sugar, 1 byte of spice.', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 5, tags: ['food', 'recipe'], isPinned: false },
+  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true, status: 'active' },
+  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5, tags: ['work', 'project omega'], isPinned: false, status: 'active' },
+  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30, tags: ['devlog', 'gamedev'], isPinned: false, status: 'active' },
+  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now(), tags: ['todo'], isPinned: true, status: 'active' },
+  { id: '5', title: 'Recipe for Pixel Pie', content: 'Ingredients: Digital flour, virtual sugar, 1 byte of spice.', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 5, tags: ['food', 'recipe'], isPinned: false, status: 'active' },
 ];
 
 type LayoutMode = 'bubble' | 'grid' | 'list';
@@ -39,24 +39,23 @@ const CUSTOM_PALETTE_NAME = 'Custom';
 
 interface BubblePaletteConfig {
   name: string;
-  bg: string; // Main background for the bubble (HSL string "H S% L%")
-  previewBg?: string; // Optional: if the button preview needs a different shade (HSL string "H S% L%")
-  text: string; // Text color (HSL string "H S% L%")
-  glow1: string; // Glow1 color (HSL string "H S% L%")
-  glow2: string; // Glow2 color (HSL string "H S% L%")
+  bg: string; 
+  previewBg?: string; 
+  text: string; 
+  glow1: string; 
+  glow2: string; 
 }
 
-const bubblePalettes: Omit<BubblePaletteConfig, 'previewBg'>[] = [ // previewBg will be bg for predefined
-  { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, // Actual values derived from CSS vars for theme default
+const bubblePalettes: Omit<BubblePaletteConfig, 'previewBg'>[] = [
+  { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, 
   { name: 'Ocean', bg: '200 80% 70%', text: '200 100% 10%', glow1: '190 70% 50%', glow2: '210 90% 80%' },
   { name: 'Sunset', bg: '30 100% 75%', text: '20 100% 15%', glow1: '20 80% 60%', glow2: '40 100% 85%' },
   { name: 'Forest', bg: '120 50% 60%', text: '100 100% 10%', glow1: '110 40% 40%', glow2: '130 60% 75%' },
   { name: 'Lavender', bg: '270 60% 80%', text: '270 100% 20%', glow1: '260 50% 65%', glow2: '280 70% 90%' },
   { name: 'Coral', bg: '10 90% 70%', text: '5 100% 15%', glow1: '5 80% 55%', glow2: '15 100% 80%' },
-  { name: CUSTOM_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, // Placeholder for custom
+  { name: CUSTOM_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, 
 ];
 
-// LocalStorage keys
 const NOTES_KEY = 'pixel-notes';
 const LAYOUT_KEY = 'pixel-notes-layout';
 const PALETTE_NAME_KEY = 'pixel-notes-palette-name';
@@ -64,10 +63,10 @@ const CUSTOM_PALETTE_CONFIG_KEY = 'pixel-notes-custom-palette-config';
 
 const DEFAULT_CUSTOM_PALETTE: BubblePaletteConfig = {
   name: CUSTOM_PALETTE_NAME,
-  bg: '200 50% 85%', // Default custom bg: light blue
-  text: '200 100% 10%', // Default custom text
-  glow1: '190 40% 70%', // Default custom glow1
-  glow2: '210 60% 90%', // Default custom glow2
+  bg: '200 50% 85%', 
+  text: '200 100% 10%', 
+  glow1: '190 40% 70%', 
+  glow2: '210 60% 90%', 
 };
 
 
@@ -77,26 +76,28 @@ export default function HomePage() {
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null);
+  
+  const [isPermanentDeleteConfirmOpen, setIsPermanentDeleteConfirmOpen] = useState(false);
+  const [noteIdForPermanentDelete, setNoteIdForPermanentDelete] = useState<string | null>(null);
   
   const [layout, setLayout] = useState<LayoutMode>('bubble');
   const [selectedPaletteName, setSelectedPaletteName] = useState<string>(THEME_DEFAULT_PALETTE_NAME);
   const [customBubblePalette, setCustomBubblePalette] = useState<BubblePaletteConfig>(DEFAULT_CUSTOM_PALETTE);
   const [isMounted, setIsMounted] = useState(false);
+  const [showTrashedNotes, setShowTrashedNotes] = useState(false);
 
 
   useEffect(() => {
     setIsMounted(true);
-    // Load notes
     const storedNotes = localStorage.getItem(NOTES_KEY);
-    let parsedNotes: Note[] = initialNotesData.map(n => ({...n, isPinned: n.isPinned || false, tags: n.tags || []}));
+    let parsedNotes: Note[] = initialNotesData.map(n => ({...n, isPinned: n.isPinned || false, tags: n.tags || [], status: n.status || 'active'}));
     if (storedNotes) {
       try {
         const tempParsedNotes: Note[] = JSON.parse(storedNotes).map((n: any) => ({
           ...n,
           tags: n.tags || [],
           isPinned: n.isPinned || false,
+          status: n.status || 'active', // Ensure status defaults to 'active'
         }));
         if (Array.isArray(tempParsedNotes) && tempParsedNotes.every(n => typeof n.id === 'string' && typeof n.title === 'string')) {
           parsedNotes = tempParsedNotes;
@@ -107,15 +108,13 @@ export default function HomePage() {
     }
     setNotes(parsedNotes);
 
-    // Load layout
     const storedLayout = localStorage.getItem(LAYOUT_KEY) as LayoutMode | null;
     if (storedLayout && ['bubble', 'grid', 'list'].includes(storedLayout)) {
       setLayout(storedLayout);
     } else {
-      setLayout('bubble'); // Default to bubble view
+      setLayout('bubble'); 
     }
 
-    // Load selected palette name
     const storedPaletteName = localStorage.getItem(PALETTE_NAME_KEY);
     if (storedPaletteName && bubblePalettes.some(p => p.name === storedPaletteName)) {
       setSelectedPaletteName(storedPaletteName);
@@ -123,7 +122,6 @@ export default function HomePage() {
       setSelectedPaletteName(THEME_DEFAULT_PALETTE_NAME);
     }
 
-    // Load custom palette configuration
     const storedCustomPalette = localStorage.getItem(CUSTOM_PALETTE_CONFIG_KEY);
     if (storedCustomPalette) {
       try {
@@ -164,18 +162,19 @@ export default function HomePage() {
   }, [customBubblePalette, selectedPaletteName, isMounted]);
 
 
-  const handleAddNote = (noteData: Omit<Note, "id" | "timestamp">) => {
+  const handleAddNote = (noteData: Omit<Note, "id" | "timestamp" | "status">) => {
     const newNote: Note = {
       ...noteData,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
       isPinned: noteData.isPinned || false,
       tags: noteData.tags || [],
+      status: 'active',
     };
     setNotes((prevNotes) => [newNote, ...prevNotes]);
   };
 
-  const handleEditNote = (noteData: Omit<Note, "id" | "timestamp">, id: string) => {
+  const handleEditNote = (noteData: Omit<Note, "id" | "timestamp" | "status">, id: string) => {
     setNotes((prevNotes) =>
       prevNotes.map((note) =>
         note.id === id ? { ...note, ...noteData, timestamp: Date.now(), isPinned: noteData.isPinned || false, tags: noteData.tags || [] } : note
@@ -184,22 +183,45 @@ export default function HomePage() {
     setEditingNote(null);
   };
 
-  const handleDeleteNote = (noteId: string) => {
-    setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId));
+  const handleMoveToTrash = (noteId: string) => {
+    setNotes(prevNotes => 
+      prevNotes.map(note => 
+        note.id === noteId ? { ...note, status: 'trashed', isPinned: false, timestamp: Date.now() } : note
+      )
+    );
   };
 
-  const requestDeleteNote = (noteId: string) => {
-    setNoteIdToDelete(noteId);
-    setIsDeleteDialogOpen(true);
+  const handleRestoreFromTrash = (noteId: string) => {
+    setNotes(prevNotes =>
+      prevNotes.map(note =>
+        note.id === noteId ? { ...note, status: 'active', timestamp: Date.now() } : note
+      ).sort((a, b) => {
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (a.status !== 'active' && b.status === 'active') return 1;
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.timestamp - a.timestamp;
+      })
+    );
+  };
+  
+  const handleDeletePermanently = (noteId: string) => {
+    setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
   };
 
-  const confirmDeleteNote = () => {
-    if (noteIdToDelete) {
-      handleDeleteNote(noteIdToDelete);
+  const requestPermanentDelete = (noteId: string) => {
+    setNoteIdForPermanentDelete(noteId);
+    setIsPermanentDeleteConfirmOpen(true);
+  };
+
+  const confirmPermanentDelete = () => {
+    if (noteIdForPermanentDelete) {
+      handleDeletePermanently(noteIdForPermanentDelete);
     }
-    setIsDeleteDialogOpen(false);
-    setNoteIdToDelete(null);
+    setIsPermanentDeleteConfirmOpen(false);
+    setNoteIdForPermanentDelete(null);
   };
+
 
   const openEditModal = (note: Note) => {
     setEditingNote(note);
@@ -237,7 +259,7 @@ export default function HomePage() {
 
     if (newBgHsl) {
       const newTextHex = getContrastingTextColor(newBgHex);
-      const newTextHsl = hexToHsl(newTextHex); // Text color also needs to be HSL for consistency
+      const newTextHsl = hexToHsl(newTextHex); 
       const glows = deriveGlowColors(newBgHsl);
 
       if (newTextHsl) {
@@ -253,8 +275,12 @@ export default function HomePage() {
   };
   
   const normalizedSearchTerm = searchTerm.toLowerCase();
+  
   const filteredNotes = notes
     .filter((note) => {
+      const matchesStatus = showTrashedNotes ? note.status === 'trashed' : (note.status === 'active' || !note.status);
+      if (!matchesStatus) return false;
+
       const matchesSearch =
         note.title.toLowerCase().includes(normalizedSearchTerm) ||
         (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
@@ -267,16 +293,37 @@ export default function HomePage() {
       return matchesSearch && matchesTagFilter;
     })
     .sort((a, b) => {
+      if (showTrashedNotes) { // Sort by timestamp descending for trashed notes
+        return b.timestamp - a.timestamp;
+      }
+      // For active notes, sort by pinned then timestamp
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
       return b.timestamp - a.timestamp;
     });
 
+  const activeNotesForBubbles = notes.filter(note => note.status === 'active' || !note.status)
+    .filter((note) => { // Apply search and tag filters to bubbles too
+        const matchesSearch =
+          note.title.toLowerCase().includes(normalizedSearchTerm) ||
+          (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
+          (note.tags && note.tags.some(tag => tag.toLowerCase().includes(normalizedSearchTerm)));
+        const matchesTagFilter = activeTagFilter
+          ? note.tags && note.tags.includes(activeTagFilter)
+          : true;
+        return matchesSearch && matchesTagFilter;
+      })
+    .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.timestamp - a.timestamp;
+      });
+
   let activePaletteConfigResolved: BubblePaletteConfig | undefined;
   if (selectedPaletteName === CUSTOM_PALETTE_NAME) {
     activePaletteConfigResolved = customBubblePalette;
   } else if (selectedPaletteName === THEME_DEFAULT_PALETTE_NAME) {
-     activePaletteConfigResolved = { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: ''}; // Use CSS vars
+     activePaletteConfigResolved = { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: ''}; 
   } else {
     activePaletteConfigResolved = bubblePalettes.find(p => p.name === selectedPaletteName) as BubblePaletteConfig;
   }
@@ -294,7 +341,7 @@ export default function HomePage() {
   const currentCustomBgHex = isMounted && customBubblePalette?.bg ? hslToHex(parseHslString(customBubblePalette.bg)!) : '#cccccc';
 
   if (!isMounted) {
-    return <div className="min-h-screen flex items-center justify-center bg-background"><p>Loading notes...</p></div>; // Or a proper skeleton loader
+    return <div className="min-h-screen flex items-center justify-center bg-background"><p>Loading notes...</p></div>;
   }
 
   return (
@@ -316,6 +363,25 @@ export default function HomePage() {
         </div>
         
         <div className="mb-6 flex flex-col items-center gap-4">
+          <div className="flex gap-2 items-center">
+            <Button
+                variant={showTrashedNotes ? 'outline' : 'secondary'}
+                size="sm"
+                onClick={() => setShowTrashedNotes(false)}
+                title="View Active Notes"
+              >
+                <ListChecks className="h-4 w-4 mr-2" /> Active
+            </Button>
+             <Button
+                variant={showTrashedNotes ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setShowTrashedNotes(true)}
+                title="View Trashed Notes"
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Trash
+            </Button>
+          </div>
+          <Separator className="my-1 w-1/3 max-w-xs" />
           <div className="flex gap-2">
              <span className="text-sm text-muted-foreground self-center mr-2">View:</span>
             <Button
@@ -324,6 +390,7 @@ export default function HomePage() {
               onClick={() => setLayout('bubble')}
               aria-label="Bubble view"
               title="Bubble View"
+              disabled={showTrashedNotes} // Disable bubble view when trash is shown
             >
               <Droplets className="h-5 w-5" />
             </Button>
@@ -332,7 +399,7 @@ export default function HomePage() {
               size="icon"
               onClick={() => setLayout('grid')}
               aria-label="Grid view"
-              title="Grid View"
+              title="GridView"
             >
               <LayoutGrid className="h-5 w-5" />
             </Button>
@@ -347,7 +414,7 @@ export default function HomePage() {
             </Button>
           </div>
 
-          {layout === 'bubble' && (
+          {layout === 'bubble' && !showTrashedNotes && (
             <>
               <Separator className="my-2 w-1/2 max-w-md" />
               <div className="flex flex-col items-center gap-3">
@@ -385,7 +452,6 @@ export default function HomePage() {
                             style={{ backgroundColor: `hsl(${previewColor})` }}
                           />
                         )}
-                         {/* Conditionally render the name for non-Theme/Custom palettes on larger screens */}
                          {palette.name !== THEME_DEFAULT_PALETTE_NAME && palette.name !== CUSTOM_PALETTE_NAME && (
                             <span className="ml-1.5 text-xs hidden sm:inline">
                                 {palette.name}
@@ -429,9 +495,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {layout === 'bubble' ? (
+        {layout === 'bubble' && !showTrashedNotes ? (
           <BubbleViewContainer 
-            notes={filteredNotes} 
+            notes={activeNotesForBubbles} 
             onEditNote={openEditModal} 
             dynamicStyle={bubbleViewDynamicStyles}
           />
@@ -439,37 +505,42 @@ export default function HomePage() {
           filteredNotes.length > 0 ? (
             <div className={cn(
               "gap-6",
-              layout === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "flex flex-col"
+              layout === 'grid' && !showTrashedNotes ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "flex flex-col"
             )}>
               {filteredNotes.map((note) => (
                 <NoteCard
                   key={note.id}
                   note={note}
                   onEdit={openEditModal}
-                  onDelete={requestDeleteNote}
                   onTogglePin={handleTogglePin}
                   onTagClick={handleTagClick}
                   layout={layout}
+                  onMoveToTrash={handleMoveToTrash}
+                  onRestoreFromTrash={handleRestoreFromTrash}
+                  onDeletePermanently={requestPermanentDelete}
                 />
               ))}
             </div>
           ) : (
             <div className="text-center py-10">
               <p className="text-xl text-muted-foreground">
-                {searchTerm || activeTagFilter ? "No notes match your filters." : "You have no notes. Click '+' to add one!"}
+                {searchTerm || activeTagFilter ? "No notes match your filters." : 
+                 showTrashedNotes ? "Your trash is empty." : "You have no active notes. Click '+' to add one!"}
               </p>
             </div>
           )
         )}
       </main>
 
-      <Button
-        onClick={openAddModal}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90"
-        aria-label="Add new note"
-      >
-        <Plus className="h-7 w-7 text-primary-foreground" />
-      </Button>
+      {!showTrashedNotes && (
+        <Button
+          onClick={openAddModal}
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90"
+          aria-label="Add new note"
+        >
+          <Plus className="h-7 w-7 text-primary-foreground" />
+        </Button>
+      )}
 
       <NoteFormDialog
         isOpen={isModalOpen}
@@ -478,11 +549,12 @@ export default function HomePage() {
         initialData={editingNote}
       />
       <DeleteConfirmationDialog
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        onConfirm={confirmDeleteNote}
+        isOpen={isPermanentDeleteConfirmOpen}
+        onOpenChange={setIsPermanentDeleteConfirmOpen}
+        onConfirm={confirmPermanentDelete}
+        title="Permanently delete note?"
+        description="This action cannot be undone. The note will be gone forever."
       />
     </div>
   );
 }
-

@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 interface NoteFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (noteData: Omit<Note, "id" | "timestamp">, id?: string) => void;
+  onSubmit: (noteData: Omit<Note, "id" | "timestamp" | "status">, id?: string) => void;
   initialData?: Note | null;
 }
 
@@ -53,6 +53,9 @@ export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: 
         return;
     }
     const tagsArray = tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0);
+    
+    // The 'status' field is managed by page.tsx, not set here directly.
+    // New notes will be 'active' by default as handled in handleAddNote.
     onSubmit({ title, content, tags: tagsArray, isPinned }, initialData?.id);
     onOpenChange(false);
   };
@@ -114,6 +117,7 @@ export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: 
                     id="isPinned"
                     checked={isPinned}
                     onCheckedChange={(checked) => setIsPinned(!!checked)}
+                    disabled={initialData?.status === 'trashed'} // Cannot pin a trashed note
                 />
               </div>
             </div>
