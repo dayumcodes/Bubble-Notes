@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -27,16 +28,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${vt323.variable} font-sans antialiased`}>
-        <ThemeProviderClient
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProviderClient>
+      <body className="font-sans antialiased"> {/* Font variables removed from here */}
+        <div className={`${geistSans.variable} ${geistMono.variable} ${vt323.variable}`}> {/* Font variables applied to an inner wrapper */}
+          <ThemeProviderClient
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProviderClient>
+        </div>
       </body>
     </html>
   );
