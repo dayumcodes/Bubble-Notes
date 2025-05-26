@@ -7,7 +7,8 @@ import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/NoteCard";
 import { NoteFormDialog } from "@/components/NoteFormDialog";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react"; // Added Search icon
+import { Button } from "@/components/ui/button"; // Added Button for FAB
+import { Search, Plus } from "lucide-react"; // Added Search and Plus icons
 
 const initialNotesData: Note[] = [
   { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2 },
@@ -56,11 +57,10 @@ export default function HomePage() {
     setIsModalOpen(true);
   };
 
-  // openAddModal is no longer called from UI, but kept for potential programmatic use
-  // const openAddModal = () => { 
-  //   setEditingNote(null);
-  //   setIsModalOpen(true);
-  // };
+  const openAddModal = () => { 
+    setEditingNote(null);
+    setIsModalOpen(true);
+  };
 
   const filteredNotes = notes.filter(
     (note) =>
@@ -72,7 +72,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-grow container mx-auto px-4 pt-20 pb-8">
+      <main className="flex-grow container mx-auto px-4 pt-20 pb-24"> {/* Increased pb for FAB */}
         <div className="my-8 flex justify-center">
           <div className="relative w-full max-w-xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
@@ -101,11 +101,20 @@ export default function HomePage() {
         ) : (
           <div className="text-center py-10">
             <p className="text-xl text-muted-foreground">
-              {searchTerm ? "No notes match your search." : "You have no notes."}
+              {searchTerm ? "No notes match your search." : "You have no notes. Click '+' to add one!"}
             </p>
           </div>
         )}
       </main>
+
+      {/* Floating Action Button to Add Note */}
+      <Button
+        onClick={openAddModal}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90"
+        aria-label="Add new note"
+      >
+        <Plus className="h-7 w-7 text-primary-foreground" />
+      </Button>
 
       <NoteFormDialog
         isOpen={isModalOpen}
