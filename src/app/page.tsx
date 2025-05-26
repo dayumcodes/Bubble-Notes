@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Note } from "@/types/note";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/NoteCard";
@@ -10,7 +10,7 @@ import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette, Archive, Trash2, ListChecks, Undo2, Tags, Filter } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Filter, ListChecks, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 import { Separator } from "@/components/ui/separator";
@@ -40,21 +40,21 @@ const CUSTOM_PALETTE_NAME = 'Custom';
 
 interface BubblePaletteConfig {
   name: string;
-  bg: string; 
-  previewBg?: string; 
-  text: string; 
-  glow1: string; 
-  glow2: string; 
+  bg: string;
+  previewBg?: string;
+  text: string;
+  glow1: string;
+  glow2: string;
 }
 
 const bubblePalettes: Omit<BubblePaletteConfig, 'previewBg'>[] = [
-  { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, 
+  { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' },
   { name: 'Ocean', bg: '200 80% 70%', text: '200 100% 10%', glow1: '190 70% 50%', glow2: '210 90% 80%' },
   { name: 'Sunset', bg: '30 100% 75%', text: '20 100% 15%', glow1: '20 80% 60%', glow2: '40 100% 85%' },
   { name: 'Forest', bg: '120 50% 60%', text: '100 100% 10%', glow1: '110 40% 40%', glow2: '130 60% 75%' },
   { name: 'Lavender', bg: '270 60% 80%', text: '270 100% 20%', glow1: '260 50% 65%', glow2: '280 70% 90%' },
   { name: 'Coral', bg: '10 90% 70%', text: '5 100% 15%', glow1: '5 80% 55%', glow2: '15 100% 80%' },
-  { name: CUSTOM_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, 
+  { name: CUSTOM_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' },
 ];
 
 const NOTES_KEY = 'pixel-notes';
@@ -64,10 +64,10 @@ const CUSTOM_PALETTE_CONFIG_KEY = 'pixel-notes-custom-palette-config';
 
 const DEFAULT_CUSTOM_PALETTE: BubblePaletteConfig = {
   name: CUSTOM_PALETTE_NAME,
-  bg: '200 50% 85%', 
-  text: '200 100% 10%', 
-  glow1: '190 40% 70%', 
-  glow2: '210 60% 90%', 
+  bg: '200 50% 85%',
+  text: '200 100% 10%',
+  glow1: '190 40% 70%',
+  glow2: '210 60% 90%',
 };
 
 
@@ -77,10 +77,10 @@ export default function HomePage() {
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  
+
   const [isPermanentDeleteConfirmOpen, setIsPermanentDeleteConfirmOpen] = useState(false);
   const [noteIdForPermanentDelete, setNoteIdForPermanentDelete] = useState<string | null>(null);
-  
+
   const [layout, setLayout] = useState<LayoutMode>('bubble');
   const [selectedPaletteName, setSelectedPaletteName] = useState<string>(THEME_DEFAULT_PALETTE_NAME);
   const [customBubblePalette, setCustomBubblePalette] = useState<BubblePaletteConfig>(DEFAULT_CUSTOM_PALETTE);
@@ -88,6 +88,7 @@ export default function HomePage() {
   const [showTrashedNotes, setShowTrashedNotes] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isFiltersPopoverOpen, setIsFiltersPopoverOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function HomePage() {
           ...n,
           tags: n.tags || [],
           isPinned: n.isPinned || false,
-          status: n.status || 'active', 
+          status: n.status || 'active',
         }));
         if (Array.isArray(tempParsedNotes) && tempParsedNotes.every(n => typeof n.id === 'string' && typeof n.title === 'string')) {
           parsedNotes = tempParsedNotes;
@@ -115,7 +116,7 @@ export default function HomePage() {
     if (storedLayout && ['bubble', 'grid', 'list'].includes(storedLayout)) {
       setLayout(storedLayout);
     } else {
-      setLayout('bubble'); 
+      setLayout('bubble');
     }
 
     const storedPaletteName = localStorage.getItem(PALETTE_NAME_KEY);
@@ -158,11 +159,52 @@ export default function HomePage() {
     if (!isMounted) return;
     localStorage.setItem(PALETTE_NAME_KEY, selectedPaletteName);
   }, [selectedPaletteName, isMounted]);
-  
+
   useEffect(() => {
     if (!isMounted || selectedPaletteName !== CUSTOM_PALETTE_NAME) return;
     localStorage.setItem(CUSTOM_PALETTE_CONFIG_KEY, JSON.stringify(customBubblePalette));
   }, [customBubblePalette, selectedPaletteName, isMounted]);
+
+  const openAddModal = useCallback(() => {
+    setEditingNote(null);
+    setIsModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
+        event.preventDefault();
+        openAddModal();
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (event.key === 'Escape') {
+        if (isModalOpen) {
+          event.preventDefault();
+          setIsModalOpen(false);
+        } else if (isPermanentDeleteConfirmOpen) {
+          event.preventDefault();
+          setIsPermanentDeleteConfirmOpen(false);
+        } else if (isFiltersPopoverOpen) {
+          event.preventDefault();
+          setIsFiltersPopoverOpen(false);
+        } else if (searchTerm) {
+          event.preventDefault();
+          setSearchTerm("");
+        } else if (activeTagFilter) {
+          event.preventDefault();
+          setActiveTagFilter(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModalOpen, isPermanentDeleteConfirmOpen, isFiltersPopoverOpen, searchTerm, activeTagFilter, openAddModal]);
 
 
   const handleAddNote = (noteData: Omit<Note, "id" | "timestamp" | "status">) => {
@@ -187,8 +229,8 @@ export default function HomePage() {
   };
 
   const handleMoveToTrash = (noteId: string) => {
-    setNotes(prevNotes => 
-      prevNotes.map(note => 
+    setNotes(prevNotes =>
+      prevNotes.map(note =>
         note.id === noteId ? { ...note, status: 'trashed', isPinned: false, timestamp: Date.now() } : note
       )
     );
@@ -207,7 +249,7 @@ export default function HomePage() {
       })
     );
   };
-  
+
   const handleDeletePermanently = (noteId: string) => {
     setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
   };
@@ -231,14 +273,9 @@ export default function HomePage() {
     setIsModalOpen(true);
   };
 
-  const openAddModal = () => {
-    setEditingNote(null);
-    setIsModalOpen(true);
-  };
-
   const handleTogglePin = (noteId: string) => {
-    setNotes(prevNotes => 
-      prevNotes.map(note => 
+    setNotes(prevNotes =>
+      prevNotes.map(note =>
         note.id === noteId ? { ...note, isPinned: !note.isPinned } : note
       ).sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
@@ -247,7 +284,7 @@ export default function HomePage() {
       })
     );
   };
-  
+
   const handleTagClick = (tag: string) => {
     setActiveTagFilter(current => (current === tag ? null : tag));
   };
@@ -262,7 +299,7 @@ export default function HomePage() {
 
     if (newBgHsl) {
       const newTextHex = getContrastingTextColor(newBgHex);
-      const newTextHsl = hexToHsl(newTextHex); 
+      const newTextHsl = hexToHsl(newTextHex);
       const glows = deriveGlowColors(newBgHsl);
 
       if (newTextHsl) {
@@ -276,9 +313,9 @@ export default function HomePage() {
       }
     }
   };
-  
+
   const normalizedSearchTerm = searchTerm.toLowerCase();
-  
+
   const filteredNotes = notes
     .filter((note) => {
       const matchesStatus = showTrashedNotes ? note.status === 'trashed' : (note.status === 'active' || !note.status);
@@ -288,15 +325,15 @@ export default function HomePage() {
         note.title.toLowerCase().includes(normalizedSearchTerm) ||
         (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
         (note.tags && note.tags.some(tag => tag.toLowerCase().includes(normalizedSearchTerm)));
-      
+
       const matchesTagFilter = activeTagFilter
         ? note.tags && note.tags.includes(activeTagFilter)
         : true;
-        
+
       return matchesSearch && matchesTagFilter;
     })
     .sort((a, b) => {
-      if (showTrashedNotes) { 
+      if (showTrashedNotes) {
         return b.timestamp - a.timestamp;
       }
       if (a.isPinned && !b.isPinned) return -1;
@@ -305,7 +342,7 @@ export default function HomePage() {
     });
 
   const activeNotesForBubbles = notes.filter(note => note.status === 'active' || !note.status)
-    .filter((note) => { 
+    .filter((note) => {
         const matchesSearch =
           note.title.toLowerCase().includes(normalizedSearchTerm) ||
           (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
@@ -325,11 +362,11 @@ export default function HomePage() {
   if (selectedPaletteName === CUSTOM_PALETTE_NAME) {
     activePaletteConfigResolved = customBubblePalette;
   } else if (selectedPaletteName === THEME_DEFAULT_PALETTE_NAME) {
-     activePaletteConfigResolved = { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: ''}; 
+     activePaletteConfigResolved = { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: ''};
   } else {
     activePaletteConfigResolved = bubblePalettes.find(p => p.name === selectedPaletteName) as BubblePaletteConfig;
   }
-  
+
   const bubbleViewDynamicStyles =
     activePaletteConfigResolved && selectedPaletteName !== THEME_DEFAULT_PALETTE_NAME
       ? {
@@ -484,7 +521,7 @@ export default function HomePage() {
       <Header layout={layout} />
       <main className="flex-grow container mx-auto px-4 pt-20 pb-28 flex flex-col">
         <div className="my-6 flex flex-col sm:flex-row justify-center items-center gap-4 relative">
-          <div 
+          <div
             className={cn(
               "search-bar-container group relative w-full transition-all duration-300 ease-out",
               isSearchFocused ? "max-w-2xl" : "max-w-xl"
@@ -492,8 +529,9 @@ export default function HomePage() {
           >
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
             <Input
+              ref={searchInputRef}
               type="search"
-              placeholder="Search notes, content, or tags..."
+              placeholder="Search notes, content, or tags... (Ctrl+F)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
@@ -539,9 +577,9 @@ export default function HomePage() {
             </Button>
             <Popover open={isFiltersPopoverOpen} onOpenChange={setIsFiltersPopoverOpen}>
                 <PopoverTrigger asChild>
-                <Button 
-                    variant="outline" 
-                    size="icon" 
+                <Button
+                    variant="outline"
+                    size="icon"
                     className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm"
                     title="Open Filters"
                 >
@@ -554,7 +592,7 @@ export default function HomePage() {
             </Popover>
           </div>
         </div>
-        
+
         {activeTagFilter && (
           <div className="mb-4 flex items-center justify-center gap-2 animate-fadeIn">
             <span className="text-sm text-muted-foreground">Filtering by:</span>
@@ -568,9 +606,9 @@ export default function HomePage() {
         )}
 
         {layout === 'bubble' && !showTrashedNotes ? (
-          <BubbleViewContainer 
-            notes={activeNotesForBubbles} 
-            onEditNote={openEditModal} 
+          <BubbleViewContainer
+            notes={activeNotesForBubbles}
+            onEditNote={openEditModal}
             dynamicStyle={bubbleViewDynamicStyles}
           />
         ) : (
@@ -583,6 +621,7 @@ export default function HomePage() {
                 <NoteCard
                   key={note.id}
                   note={note}
+                  searchTerm={searchTerm}
                   onEdit={openEditModal}
                   onTogglePin={handleTogglePin}
                   onTagClick={handleTagClick}
@@ -596,7 +635,7 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-10 animate-fadeIn">
               <p className="text-xl text-muted-foreground">
-                {searchTerm || activeTagFilter ? "No notes match your filters." : 
+                {searchTerm || activeTagFilter ? "No notes match your filters." :
                  showTrashedNotes ? "Your trash is empty." : "You have no active notes. Click '+' to add one!"}
               </p>
             </div>
@@ -608,7 +647,8 @@ export default function HomePage() {
         <Button
           onClick={openAddModal}
           className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
-          aria-label="Add new note"
+          aria-label="Add new note (Ctrl+N)"
+          title="Add new note (Ctrl+N)"
         >
           <Plus className="h-7 w-7" />
         </Button>
@@ -630,3 +670,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
