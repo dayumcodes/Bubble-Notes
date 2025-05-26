@@ -41,6 +41,12 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Bubble View Specific */
+    --bubble-bg-start-light: 200 100% 92%; /* Light Pastel Blue */
+    --bubble-bg-end-light: 320 100% 92%;   /* Light Pastel Pink/Purple */
+    --bubble-glow-light: 260 100% 80%; /* Lavender glow */
+    --bubble-text-light: 231 48% 25%;
   }
   .dark {
     --background: 231 20% 12%; /* Dark blue-gray */
@@ -75,6 +81,12 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Bubble View Specific */
+    --bubble-bg-start-dark: 220 30% 15%; /* Darker Pastel Blue */
+    --bubble-bg-end-dark: 280 30% 15%;   /* Darker Pastel Purple */
+    --bubble-glow-dark: 260 100% 40%; /* Deeper Lavender glow */
+    --bubble-text-dark: 0 0% 85%;
   }
 }
 
@@ -93,4 +105,27 @@
   html {
     @apply transition-colors duration-300;
   }
+}
+
+@keyframes floatBubble {
+  0%, 100% {
+    transform: translate(var(--tx, 0px), var(--ty, 0px)) rotate(var(--r, 0deg)) scale(var(--s, 1));
+  }
+  25% {
+    transform: translate(calc(var(--tx, 0px) + var(--dx1, 5px)), calc(var(--ty, 0px) + var(--dy1, -10px))) rotate(calc(var(--r, 0deg) + var(--dr1, 3deg))) scale(calc(var(--s, 1) * 1.02));
+  }
+  50% {
+    transform: translate(calc(var(--tx, 0px) + var(--dx2, -5px)), calc(var(--ty, 0px) + var(--dy2, 8px))) rotate(calc(var(--r, 0deg) + var(--dr2, -2deg))) scale(calc(var(--s, 1) * 0.98));
+  }
+  75% {
+    transform: translate(calc(var(--tx, 0px) + var(--dx3, 3px)), calc(var(--ty, 0px) + var(--dy3, -7px))) rotate(calc(var(--r, 0deg) + var(--dr3, 1deg))) scale(calc(var(--s, 1) * 1.01));
+  }
+}
+
+@keyframes bounceBubbleActive {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.25, 0.75) translateY(5px); }
+  50% { transform: scale(0.9, 1.1) translateY(-10px); }
+  70% { transform: scale(1.05, 0.95) translateY(2px); }
+  100% { transform: scale(1); }
 }
