@@ -9,6 +9,11 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        sans: ['var(--font-geist-sans)'], // Default sans-serif
+        mono: ['var(--font-geist-mono)'], // Default mono
+        pixel: ['var(--font-vt323)'],   // Custom pixel font
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
