@@ -24,7 +24,7 @@ import {
   deriveGlowColors,
 } from "@/lib/color-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { LoadingSpinner } from "@/components/LoadingSpinner"; // Import the spinner
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import React from "react";
 
 const initialNotesData: Note[] = [
@@ -91,6 +91,7 @@ export default function HomePage() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isFiltersPopoverOpen, setIsFiltersPopoverOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const colorInputRecentlyClicked = useRef(false);
 
 
   useEffect(() => {
@@ -488,6 +489,9 @@ export default function HomePage() {
                   id="custom-bubble-bg"
                   value={currentCustomBgHex}
                   onChange={handleCustomBgColorChange}
+                  onMouseDown={() => {
+                    colorInputRecentlyClicked.current = true;
+                  }}
                   className="w-20 h-8 p-0 border-none rounded cursor-pointer bg-transparent"
                   title="Pick custom background color"
                 />
@@ -595,13 +599,13 @@ export default function HomePage() {
                     <Filter className="h-5 w-5" />
                 </Button>
                 </PopoverTrigger>
-                <PopoverContent 
-                    className="w-80 p-0 border-none shadow-2xl bg-transparent" 
+                <PopoverContent
+                    className="w-80 p-0 border-none shadow-2xl bg-transparent"
                     sideOffset={10}
-                    onInteractOutside={(event) => {
-                        // Prevent closing if the interaction is with the color picker
-                        if (event.target && (event.target as HTMLElement).closest('input[type="color"]')) {
+                    onPointerDownOutside={(event) => {
+                        if (colorInputRecentlyClicked.current) {
                             event.preventDefault();
+                            colorInputRecentlyClicked.current = false;
                         }
                     }}
                 >
@@ -713,4 +717,6 @@ const highlightText = (text: string | null | undefined, highlight: string | null
     </>
   );
 };
+    
+
     
