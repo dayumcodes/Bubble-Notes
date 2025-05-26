@@ -10,9 +10,10 @@ export default {
   theme: {
   	extend: {
       fontFamily: {
-        sans: ['var(--font-geist-sans)'], // Default sans-serif
+        sans: ['"Doto"', 'var(--font-geist-sans)', 'Arial', 'Helvetica', 'sans-serif'], // Make Doto the primary sans-serif font
         mono: ['var(--font-geist-mono)'], // Default mono
         pixel: ['var(--font-vt323)'],   // Custom pixel font
+        doto: ['"Doto"', 'var(--font-geist-sans)', 'Arial', 'Helvetica', 'sans-serif'], // Explicit 'font-doto' utility
       },
   		colors: {
   			background: 'hsl(var(--background))',
