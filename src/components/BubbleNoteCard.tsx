@@ -3,7 +3,7 @@
 
 import type { Note } from "@/types/note";
 import { cn } from "@/lib/utils";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 interface BubbleNoteCardProps {
   note: Note;
@@ -21,10 +21,10 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
   const [size, setSize] = useState(BUBBLE_MIN_SIZE);
 
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [position, setPosition] = useState({ top: Math.random() * 200, left: Math.random() * 200 }); // Initial placeholder
   const dragStartOffset = useRef({ x: 0, y: 0 });
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const isDraggingRef = useRef(false); // To use in global event listeners
+  const isDraggingRef = useRef(false); 
 
   useEffect(() => {
     isDraggingRef.current = isDragging;
@@ -34,8 +34,6 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
     const newSize = BUBBLE_MIN_SIZE + Math.random() * (BUBBLE_MAX_SIZE - BUBBLE_MIN_SIZE);
     setSize(newSize);
 
-    // Ensure bubbles are somewhat within view initially
-    // Adjusted to use newSize directly for calculation
     const maxTop = containerHeight > 0 ? Math.max(0, containerHeight - newSize - 20) : 200;
     const maxLeft = containerWidth > 0 ? Math.max(0, containerWidth - newSize - 20) : 200;
 
@@ -57,67 +55,106 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
       animationDuration: `${15 + Math.random() * 10}s`,
       animationDelay: `${Math.random() * 5}s`,
     } as React.CSSProperties);
-  }, [containerWidth, containerHeight]); // Removed size dependency as it's set once
+  }, [containerWidth, containerHeight]);
 
-  const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !bubbleRef.current) return; // Only main mouse button
-    event.preventDefault();
 
-    bubbleRef.current.dataset.wasDragged = "false"; // Reset drag flag
+  const internalHandleDragStart = useCallback((clientX: number, clientY: number) => {
+    if (!bubbleRef.current) return;
+    bubbleRef.current.dataset.wasDragged = "false"; 
 
     setIsDragging(true);
     const rect = bubbleRef.current.getBoundingClientRect();
     dragStartOffset.current = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
-  };
+  }, []);
+
+  const internalHandleDragMove = useCallback((clientX: number, clientY: number) => {
+    if (!isDraggingRef.current || !bubbleRef.current) return;
+
+    bubbleRef.current.dataset.wasDragged = "true";
+
+    const parentEl = bubbleRef.current.parentElement;
+    if (!parentEl) return;
+    const parentRect = parentEl.getBoundingClientRect();
+
+    // Calculate target position relative to the viewport
+    let targetViewportX = clientX - dragStartOffset.current.x;
+    let targetViewportY = clientY - dragStartOffset.current.y;
+
+    // Convert to position relative to the parent container
+    let newLeft = targetViewportX - parentRect.left;
+    let newTop = targetViewportY - parentRect.top;
+
+    const bubbleCurrentSize = size;
+    const rightBoundary = containerWidth - bubbleCurrentSize;
+    const bottomBoundary = containerHeight - bubbleCurrentSize;
+
+    newLeft = Math.max(0, Math.min(newLeft, rightBoundary < 0 ? 0 : rightBoundary));
+    newTop = Math.max(0, Math.min(newTop, bottomBoundary < 0 ? 0 : bottomBoundary));
+      
+    setPosition({ top: newTop, left: newLeft });
+  }, [size, containerWidth, containerHeight]);
+
+  const internalHandleDragEnd = useCallback(() => {
+    if (isDraggingRef.current) {
+      setIsDragging(false);
+    }
+  }, []);
+  
+  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return; 
+    // event.preventDefault(); // Usually not needed for mousedown, can interfere with focus/click
+    internalHandleDragStart(event.clientX, event.clientY);
+  }, [internalHandleDragStart]);
+
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (event.touches.length === 1) { // Handle single touch
+      // event.preventDefault(); // Avoid if it prevents click, handle in touchmove
+      internalHandleDragStart(event.touches[0].clientX, event.touches[0].clientY);
+    }
+  }, [internalHandleDragStart]);
 
   useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!isDraggingRef.current || !bubbleRef.current) return;
-
-      // Mark that dragging has occurred
-      bubbleRef.current.dataset.wasDragged = "true";
-
-      let newLeft = event.clientX - dragStartOffset.current.x;
-      let newTop = event.clientY - dragStartOffset.current.y;
-
-      const bubbleCurrentSize = size; // Use state 'size' as it's stable after init
-      const rightBoundary = containerWidth - bubbleCurrentSize;
-      const bottomBoundary = containerHeight - bubbleCurrentSize;
-
-      newLeft = Math.max(0, Math.min(newLeft, rightBoundary < 0 ? 0 : rightBoundary));
-      newTop = Math.max(0, Math.min(newTop, bottomBoundary < 0 ? 0 : bottomBoundary));
-      
-      setPosition({ top: newTop, left: newLeft });
+    const onMouseMove = (event: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      internalHandleDragMove(event.clientX, event.clientY);
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (!isDraggingRef.current || event.touches.length !== 1) return;
+      event.preventDefault(); // Prevent page scroll during drag
+      internalHandleDragMove(event.touches[0].clientX, event.touches[0].clientY);
     };
 
-    const handleMouseUp = () => {
-      if (isDraggingRef.current) {
-        setIsDragging(false);
-      }
+    const onMouseUpOrTouchEnd = () => {
+      internalHandleDragEnd();
     };
 
     if (isDragging) {
       document.body.classList.add("dragging-bubble");
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUpOrTouchEnd);
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('touchend', onMouseUpOrTouchEnd);
+      window.addEventListener('touchcancel', onMouseUpOrTouchEnd);
     } else {
       document.body.classList.remove("dragging-bubble");
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUpOrTouchEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onMouseUpOrTouchEnd);
+      window.removeEventListener('touchcancel', onMouseUpOrTouchEnd);
       document.body.classList.remove("dragging-bubble");
     };
-  }, [isDragging, containerWidth, containerHeight, size]);
+  }, [isDragging, internalHandleDragMove, internalHandleDragEnd]);
 
 
   const handleClick = () => {
     if (bubbleRef.current?.dataset.wasDragged === "true") {
-      // If it was dragged, reset flag and do nothing else for this click.
       bubbleRef.current.dataset.wasDragged = "false";
       return;
     }
@@ -141,12 +178,12 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
     <div
       ref={bubbleRef}
       className={cn(
-        "bubble-card", // Base class for cursor styles
+        "bubble-card",
         "absolute rounded-full flex items-center justify-center p-3 transition-all duration-300 ease-out shadow-xl",
         "hover:shadow-2xl",
         bubbleBgClass,
         isBouncing ? "animate-[bounceBubbleActive_0.5s_ease-out]" : "animate-[floatBubble_var(--animation-duration,20s)_ease-in-out_infinite_alternate_var(--animation-delay,0s)]",
-        isDragging && "is-dragging" // Class to pause animation and set grabbing cursor
+        isDragging && "is-dragging"
       )}
       style={{
         width: `${size}px`,
@@ -154,23 +191,26 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
         top: `${position.top}px`,
         left: `${position.left}px`,
         boxShadow: `0 0 15px 2px hsla(var(--bubble-glow-light)/0.6), 0 0 8px 1px hsla(var(--bubble-glow-dark)/0.4)`,
+        touchAction: 'none', // Recommended for draggable elements on touch devices
         ...animationParams,
       }}
       onMouseDown={handleMouseDown}
-      onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick} // onClick works for both mouse and tap after touch
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' && !isDragging) handleClick();
+        if (e.key === 'Enter' && !isDraggingRef.current) handleClick();
       }}
       title={note.title}
     >
       <span 
         className={cn("text-center font-medium break-words text-sm select-none", textColorClass)}
-        style={{ pointerEvents: isDragging ? 'none' : 'auto' }} // Prevent span from interfering with drag
+        style={{ pointerEvents: isDraggingRef.current ? 'none' : 'auto' }}
       >
         {truncateTitle(note.title, Math.floor(size / 10))}
       </span>
     </div>
   );
 }
+
