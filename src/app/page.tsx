@@ -112,7 +112,7 @@ export default function HomePage() {
     if (storedLayout && ['bubble', 'grid', 'list'].includes(storedLayout)) {
       setLayout(storedLayout);
     } else {
-      setLayout('bubble');
+      setLayout('bubble'); // Default to bubble view
     }
 
     // Load selected palette name
@@ -361,9 +361,7 @@ export default function HomePage() {
                     if (palette.name === CUSTOM_PALETTE_NAME && customBubblePalette) {
                       previewColor = customBubblePalette.bg;
                     } else if (palette.name === THEME_DEFAULT_PALETTE_NAME) {
-                       // For Theme Default, we can't easily get CSS var in JS for preview
-                       // So, we'll use a generic look or specific color
-                        previewColor = 'var(--primary)'; // Rely on CSS to resolve this for the actual button style
+                        previewColor = 'var(--primary)'; 
                     }
 
                     return (
@@ -387,9 +385,12 @@ export default function HomePage() {
                             style={{ backgroundColor: `hsl(${previewColor})` }}
                           />
                         )}
-                         <span className="ml-1.5 text-xs hidden sm:inline">
-                           {palette.name.replace(THEME_DEFAULT_PALETTE_NAME, "Theme").replace(CUSTOM_PALETTE_NAME, "Custom")}
-                         </span>
+                         {/* Conditionally render the name for non-Theme/Custom palettes on larger screens */}
+                         {palette.name !== THEME_DEFAULT_PALETTE_NAME && palette.name !== CUSTOM_PALETTE_NAME && (
+                            <span className="ml-1.5 text-xs hidden sm:inline">
+                                {palette.name}
+                            </span>
+                         )}
                       </Button>
                     );
                   })}
@@ -484,3 +485,4 @@ export default function HomePage() {
     </div>
   );
 }
+
