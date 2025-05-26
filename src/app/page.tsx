@@ -10,7 +10,7 @@ import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette, Archive, Trash2, ListChecks, Undo2, Tags } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette, Archive, Trash2, ListChecks, Undo2, Tags, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +23,7 @@ import {
   parseHslString,
   deriveGlowColors,
 } from "@/lib/color-utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const initialNotesData: Note[] = [
   { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true, status: 'active' },
@@ -85,6 +86,8 @@ export default function HomePage() {
   const [customBubblePalette, setCustomBubblePalette] = useState<BubblePaletteConfig>(DEFAULT_CUSTOM_PALETTE);
   const [isMounted, setIsMounted] = useState(false);
   const [showTrashedNotes, setShowTrashedNotes] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isFiltersPopoverOpen, setIsFiltersPopoverOpen] = useState(false);
 
 
   useEffect(() => {
@@ -97,7 +100,7 @@ export default function HomePage() {
           ...n,
           tags: n.tags || [],
           isPinned: n.isPinned || false,
-          status: n.status || 'active', // Ensure status defaults to 'active'
+          status: n.status || 'active', 
         }));
         if (Array.isArray(tempParsedNotes) && tempParsedNotes.every(n => typeof n.id === 'string' && typeof n.title === 'string')) {
           parsedNotes = tempParsedNotes;
@@ -293,17 +296,16 @@ export default function HomePage() {
       return matchesSearch && matchesTagFilter;
     })
     .sort((a, b) => {
-      if (showTrashedNotes) { // Sort by timestamp descending for trashed notes
+      if (showTrashedNotes) { 
         return b.timestamp - a.timestamp;
       }
-      // For active notes, sort by pinned then timestamp
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
       return b.timestamp - a.timestamp;
     });
 
   const activeNotesForBubbles = notes.filter(note => note.status === 'active' || !note.status)
-    .filter((note) => { // Apply search and tag filters to bubbles too
+    .filter((note) => { 
         const matchesSearch =
           note.title.toLowerCase().includes(normalizedSearchTerm) ||
           (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
@@ -358,176 +360,212 @@ export default function HomePage() {
     return <div className="min-h-screen flex items-center justify-center bg-background"><p>Loading notes...</p></div>;
   }
 
+  const FilterControls = () => (
+    <div className="p-4 space-y-6 bg-background/80 backdrop-blur-md rounded-lg shadow-lg">
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
+        <div className="flex gap-2">
+          <Button
+            variant={!showTrashedNotes ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowTrashedNotes(false)}
+            title="View Active Notes"
+            className="flex-1 modern-filter-button data-[state=active]:modern-filter-button-active"
+            data-state={!showTrashedNotes ? 'active' : 'inactive'}
+          >
+            <ListChecks className="h-4 w-4 mr-2" /> Active
+          </Button>
+          <Button
+            variant={showTrashedNotes ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowTrashedNotes(true)}
+            title="View Trashed Notes"
+            className="flex-1 modern-filter-button data-[state=active]:modern-filter-button-active"
+            data-state={showTrashedNotes ? 'active' : 'inactive'}
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Trash
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground mb-2">View Mode</h3>
+        <div className="flex gap-2">
+          <Button
+            variant={layout === 'bubble' ? 'secondary' : 'outline'}
+            size="icon"
+            onClick={() => setLayout('bubble')}
+            aria-label="Bubble view"
+            title="Bubble View"
+            disabled={showTrashedNotes}
+            className="modern-filter-button data-[state=active]:modern-filter-button-active"
+            data-state={layout === 'bubble' ? 'active' : 'inactive'}
+          >
+            <Droplets className="h-5 w-5" />
+          </Button>
+          <Button
+            variant={layout === 'grid' ? 'secondary' : 'outline'}
+            size="icon"
+            onClick={() => setLayout('grid')}
+            aria-label="Grid view"
+            title="Grid View"
+            className="modern-filter-button data-[state=active]:modern-filter-button-active"
+            data-state={layout === 'grid' ? 'active' : 'inactive'}
+          >
+            <LayoutGrid className="h-5 w-5" />
+          </Button>
+          <Button
+            variant={layout === 'list' ? 'secondary' : 'outline'}
+            size="icon"
+            onClick={() => setLayout('list')}
+            aria-label="List view"
+            title="List View"
+            className="modern-filter-button data-[state=active]:modern-filter-button-active"
+            data-state={layout === 'list' ? 'active' : 'inactive'}
+          >
+            <List className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      {layout === 'bubble' && !showTrashedNotes && (
+        <>
+          <Separator />
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Bubble Palette</h3>
+            <div className="flex flex-wrap justify-center gap-2">
+              {bubblePalettes.map((palette) => {
+                const isActive = selectedPaletteName === palette.name;
+                let previewColor = palette.bg;
+                if (palette.name === CUSTOM_PALETTE_NAME && customBubblePalette) {
+                  previewColor = customBubblePalette.bg;
+                } else if (palette.name === THEME_DEFAULT_PALETTE_NAME) {
+                  previewColor = 'var(--primary)';
+                }
+
+                return (
+                  <Button
+                    key={palette.name}
+                    variant={isActive ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedPaletteName(palette.name)}
+                    className={cn(
+                      "p-2 h-auto rounded-full w-10 h-10 modern-filter-button data-[state=active]:modern-filter-button-active data-[state=active]:ring-2 data-[state=active]:ring-offset-2 data-[state=active]:ring-primary",
+                      palette.name === THEME_DEFAULT_PALETTE_NAME && "flex flex-col items-center justify-center",
+                      palette.name === CUSTOM_PALETTE_NAME && "flex flex-col items-center justify-center"
+                    )}
+                    title={palette.name}
+                    data-state={isActive ? 'active' : 'inactive'}
+                    style={palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}}
+                  >
+                    {palette.name === THEME_DEFAULT_PALETTE_NAME || palette.name === CUSTOM_PALETTE_NAME ? (
+                      <span className="text-xs">{palette.name === THEME_DEFAULT_PALETTE_NAME ? "Theme" : "Custom"}</span>
+                    ) : (
+                      <div
+                        className="w-5 h-5 rounded-full border border-border"
+                        style={{ backgroundColor: `hsl(${previewColor})` }}
+                      />
+                    )}
+                  </Button>
+                );
+              })}
+            </div>
+            {selectedPaletteName === CUSTOM_PALETTE_NAME && (
+              <div className="mt-3 flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/20 backdrop-blur-sm">
+                <label htmlFor="custom-bubble-bg" className="text-xs text-muted-foreground">
+                  Custom Background:
+                </label>
+                <input
+                  type="color"
+                  id="custom-bubble-bg"
+                  value={currentCustomBgHex}
+                  onChange={handleCustomBgColorChange}
+                  className="w-20 h-8 p-0 border-none rounded cursor-pointer bg-transparent"
+                  title="Pick custom background color"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Text & glow derived automatically.</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {!showTrashedNotes && allUniqueActiveTags.length > 0 && (
+        <>
+          <Separator />
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Filter by Tag</h3>
+            <div className="flex flex-wrap justify-center gap-2 tag-container-animate">
+              {allUniqueActiveTags.map((tag, index) => (
+                <Badge
+                  key={tag}
+                  variant={activeTagFilter === tag ? 'default' : 'secondary'}
+                  onClick={() => handleTagClick(tag)}
+                  className="modern-filter-button data-[state=active]:modern-filter-button-active cursor-pointer text-xs py-1 px-3 transition-all duration-300"
+                  data-state={activeTagFilter === tag ? 'active' : 'inactive'}
+                  title={`Filter by tag: ${tag}`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header layout={layout} />
       <main className="flex-grow container mx-auto px-4 pt-20 pb-28 flex flex-col">
-        <div className="my-8 flex flex-col sm:flex-row justify-center items-center gap-4">
-          <div className="relative w-full max-w-xl">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+        <div className="my-6 flex flex-col sm:flex-row justify-center items-center gap-4 relative">
+          <div 
+            className={cn(
+              "search-bar-container group relative w-full transition-all duration-300 ease-out",
+              isSearchFocused ? "max-w-2xl" : "max-w-xl"
+            )}
+          >
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
             <Input
               type="search"
               placeholder="Search notes, content, or tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full shadow-sm pl-11 pr-4 py-2.5 rounded-md border"
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              className="search-input w-full shadow-lg pl-11 pr-4 py-3 rounded-full border-transparent focus:border-transparent bg-background/70 backdrop-blur-sm focus:ring-2 focus:ring-primary/70 focus:ring-offset-0"
               aria-label="Search notes"
             />
           </div>
+          <Popover open={isFiltersPopoverOpen} onOpenChange={setIsFiltersPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm"
+                title="Open Filters"
+              >
+                <Filter className="h-5 w-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0 border-none shadow-2xl bg-transparent" sideOffset={10}>
+              <FilterControls />
+            </PopoverContent>
+          </Popover>
         </div>
         
-        <div className="mb-6 flex flex-col items-center gap-4">
-          <div className="flex gap-2 items-center">
-            <Button
-                variant={showTrashedNotes ? 'outline' : 'secondary'}
-                size="sm"
-                onClick={() => setShowTrashedNotes(false)}
-                title="View Active Notes"
-              >
-                <ListChecks className="h-4 w-4 mr-2" /> Active
-            </Button>
-             <Button
-                variant={showTrashedNotes ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={() => setShowTrashedNotes(true)}
-                title="View Trashed Notes"
-              >
-                <Trash2 className="h-4 w-4 mr-2" /> Trash
-            </Button>
-          </div>
-          <Separator className="my-1 w-1/3 max-w-xs" />
-          <div className="flex gap-2">
-             <span className="text-sm text-muted-foreground self-center mr-2">View:</span>
-            <Button
-              variant={layout === 'bubble' ? 'secondary' : 'outline'}
-              size="icon"
-              onClick={() => setLayout('bubble')}
-              aria-label="Bubble view"
-              title="Bubble View"
-              disabled={showTrashedNotes} // Disable bubble view when trash is shown
-            >
-              <Droplets className="h-5 w-5" />
-            </Button>
-            <Button
-              variant={layout === 'grid' ? 'secondary' : 'outline'}
-              size="icon"
-              onClick={() => setLayout('grid')}
-              aria-label="Grid view"
-              title="GridView"
-            >
-              <LayoutGrid className="h-5 w-5" />
-            </Button>
-            <Button
-              variant={layout === 'list' ? 'secondary' : 'outline'}
-              size="icon"
-              onClick={() => setLayout('list')}
-              aria-label="List view"
-              title="List View"
-            >
-              <List className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {layout === 'bubble' && !showTrashedNotes && (
-            <>
-              <Separator className="my-2 w-1/2 max-w-md" />
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Palette size={16} /> Bubble Palette:
-                </div>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {bubblePalettes.map((palette) => {
-                    const isActive = selectedPaletteName === palette.name;
-                    let previewColor = palette.bg;
-                    if (palette.name === CUSTOM_PALETTE_NAME && customBubblePalette) {
-                      previewColor = customBubblePalette.bg;
-                    } else if (palette.name === THEME_DEFAULT_PALETTE_NAME) {
-                        previewColor = 'var(--primary)'; 
-                    }
-
-                    return (
-                      <Button
-                        key={palette.name}
-                        variant={isActive ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setSelectedPaletteName(palette.name)}
-                        className={cn(
-                          "p-2 h-auto rounded-md",
-                          isActive && "ring-2 ring-ring ring-offset-2"
-                        )}
-                        title={palette.name}
-                        style={palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}}
-                      >
-                        {palette.name === THEME_DEFAULT_PALETTE_NAME || palette.name === CUSTOM_PALETTE_NAME ? (
-                           <span className="text-xs">{palette.name === THEME_DEFAULT_PALETTE_NAME ? "Theme" : "Custom"}</span>
-                        ) : (
-                          <div 
-                            className="w-5 h-5 rounded-full border border-border"
-                            style={{ backgroundColor: `hsl(${previewColor})` }}
-                          />
-                        )}
-                         {palette.name !== THEME_DEFAULT_PALETTE_NAME && palette.name !== CUSTOM_PALETTE_NAME && (
-                            <span className="ml-1.5 text-xs hidden sm:inline">
-                                {palette.name}
-                            </span>
-                         )}
-                      </Button>
-                    );
-                  })}
-                </div>
-                {selectedPaletteName === CUSTOM_PALETTE_NAME && (
-                  <div className="mt-3 flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/50">
-                    <label htmlFor="custom-bubble-bg" className="text-xs text-muted-foreground">
-                      Custom Background Color:
-                    </label>
-                    <input
-                      type="color"
-                      id="custom-bubble-bg"
-                      value={currentCustomBgHex}
-                      onChange={handleCustomBgColorChange}
-                      className="w-20 h-8 p-0 border-none rounded cursor-pointer"
-                      title="Pick custom background color"
-                    />
-                     <p className="text-xs text-muted-foreground mt-1">Text & glow colors derived automatically.</p>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {!showTrashedNotes && allUniqueActiveTags.length > 0 && (
-          <>
-            <Separator className="my-2 w-3/4 max-w-lg mx-auto" />
-            <div className="mb-6 flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Tags size={16} /> All Tags:
-                </div>
-                <div className="flex flex-wrap justify-center gap-2">
-                    {allUniqueActiveTags.map(tag => (
-                        <Badge
-                            key={tag}
-                            variant={activeTagFilter === tag ? 'default' : 'secondary'}
-                            onClick={() => handleTagClick(tag)}
-                            className="cursor-pointer text-xs"
-                            title={`Filter by tag: ${tag}`}
-                        >
-                            {tag}
-                        </Badge>
-                    ))}
-                </div>
-            </div>
-          </>
-        )}
-
-
         {activeTagFilter && (
-          <div className="mb-4 flex items-center justify-center gap-2">
+          <div className="mb-4 flex items-center justify-center gap-2 animate-fadeIn">
             <span className="text-sm text-muted-foreground">Filtering by:</span>
-            <Badge variant="secondary" className="font-medium">
+            <Badge variant="secondary" className="font-medium modern-filter-button modern-filter-button-active">
               {activeTagFilter}
             </Badge>
-            <Button variant="ghost" size="sm" onClick={clearTagFilter} className="p-1 h-auto text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="sm" onClick={clearTagFilter} className="p-1 h-auto text-muted-foreground hover:text-destructive modern-filter-button">
               <XCircle className="h-4 w-4 mr-1" /> Clear
             </Button>
           </div>
@@ -542,7 +580,7 @@ export default function HomePage() {
         ) : (
           filteredNotes.length > 0 ? (
             <div className={cn(
-              "gap-6",
+              "gap-6 animate-fadeIn",
               layout === 'grid' && !showTrashedNotes ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "flex flex-col"
             )}>
               {filteredNotes.map((note) => (
@@ -560,7 +598,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-10">
+            <div className="text-center py-10 animate-fadeIn">
               <p className="text-xl text-muted-foreground">
                 {searchTerm || activeTagFilter ? "No notes match your filters." : 
                  showTrashedNotes ? "Your trash is empty." : "You have no active notes. Click '+' to add one!"}
@@ -573,10 +611,10 @@ export default function HomePage() {
       {!showTrashedNotes && (
         <Button
           onClick={openAddModal}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90"
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
           aria-label="Add new note"
         >
-          <Plus className="h-7 w-7 text-primary-foreground" />
+          <Plus className="h-7 w-7" />
         </Button>
       )}
 
@@ -597,3 +635,4 @@ export default function HomePage() {
   );
 }
 
+    

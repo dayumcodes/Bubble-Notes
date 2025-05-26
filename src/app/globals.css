@@ -160,3 +160,60 @@
   cursor: grabbing !important;
   z-index: 1000; /* Ensure dragged bubble is on top of others */
 }
+
+/* Modern UI Enhancements */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes softBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.search-input:focus {
+  animation: borderGlow 1.5s infinite alternate;
+}
+
+@keyframes borderGlow {
+  from { box-shadow: 0 0 5px 0px hsl(var(--primary)/0.5), 0 0 8px 0px hsl(var(--primary)/0.4); }
+  to { box-shadow: 0 0 10px 2px hsl(var(--primary)/0.7), 0 0 15px 2px hsl(var(--primary)/0.6); }
+}
+
+.modern-filter-button {
+  @apply transition-all duration-200 ease-out transform active:scale-95;
+  @apply shadow-md hover:shadow-lg rounded-md border border-transparent;
+  @apply bg-background/50 backdrop-blur-sm hover:bg-accent/20;
+}
+:is(.dark) .modern-filter-button {
+   @apply bg-background/20 hover:bg-accent/30;
+}
+
+
+.modern-filter-button-active {
+  @apply bg-primary text-primary-foreground shadow-inner hover:bg-primary/90;
+}
+:is(.dark) .modern-filter-button-active {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+
+.tag-container-animate .modern-filter-button {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInItem 0.3s ease-out forwards;
+}
+
+@keyframes fadeInItem {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+    
