@@ -388,48 +388,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      <Separator />
-
-      <div>
-        <h3 className="text-sm font-medium text-muted-foreground mb-2">View Mode</h3>
-        <div className="flex gap-2">
-          <Button
-            variant={layout === 'bubble' ? 'secondary' : 'outline'}
-            size="icon"
-            onClick={() => setLayout('bubble')}
-            aria-label="Bubble view"
-            title="Bubble View"
-            disabled={showTrashedNotes}
-            className="modern-filter-button data-[state=active]:modern-filter-button-active"
-            data-state={layout === 'bubble' ? 'active' : 'inactive'}
-          >
-            <Droplets className="h-5 w-5" />
-          </Button>
-          <Button
-            variant={layout === 'grid' ? 'secondary' : 'outline'}
-            size="icon"
-            onClick={() => setLayout('grid')}
-            aria-label="Grid view"
-            title="Grid View"
-            className="modern-filter-button data-[state=active]:modern-filter-button-active"
-            data-state={layout === 'grid' ? 'active' : 'inactive'}
-          >
-            <LayoutGrid className="h-5 w-5" />
-          </Button>
-          <Button
-            variant={layout === 'list' ? 'secondary' : 'outline'}
-            size="icon"
-            onClick={() => setLayout('list')}
-            aria-label="List view"
-            title="List View"
-            className="modern-filter-button data-[state=active]:modern-filter-button-active"
-            data-state={layout === 'list' ? 'active' : 'inactive'}
-          >
-            <List className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
-
       {layout === 'bubble' && !showTrashedNotes && (
         <>
           <Separator />
@@ -461,7 +419,9 @@ export default function HomePage() {
                     style={palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}}
                   >
                     {palette.name === THEME_DEFAULT_PALETTE_NAME || palette.name === CUSTOM_PALETTE_NAME ? (
-                      <span className="text-xs">{palette.name === THEME_DEFAULT_PALETTE_NAME ? "Theme" : "Custom"}</span>
+                        <span className="text-xs leading-tight text-center">
+                        {palette.name === THEME_DEFAULT_PALETTE_NAME ? "Theme" : "Custom"}
+                        </span>
                     ) : (
                       <div
                         className="w-5 h-5 rounded-full border border-border"
@@ -542,21 +502,57 @@ export default function HomePage() {
               aria-label="Search notes"
             />
           </div>
-          <Popover open={isFiltersPopoverOpen} onOpenChange={setIsFiltersPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm"
-                title="Open Filters"
-              >
-                <Filter className="h-5 w-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 border-none shadow-2xl bg-transparent" sideOffset={10}>
-              <FilterControls />
-            </PopoverContent>
-          </Popover>
+          <div className="flex gap-2 items-center">
+            <Button
+                variant={layout === 'bubble' ? 'secondary' : 'outline'}
+                size="icon"
+                onClick={() => setLayout('bubble')}
+                aria-label="Bubble view"
+                title="Bubble View"
+                disabled={showTrashedNotes}
+                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
+                data-state={layout === 'bubble' ? 'active' : 'inactive'}
+            >
+                <Droplets className="h-5 w-5" />
+            </Button>
+            <Button
+                variant={layout === 'grid' ? 'secondary' : 'outline'}
+                size="icon"
+                onClick={() => setLayout('grid')}
+                aria-label="Grid view"
+                title="Grid View"
+                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
+                data-state={layout === 'grid' ? 'active' : 'inactive'}
+            >
+                <LayoutGrid className="h-5 w-5" />
+            </Button>
+            <Button
+                variant={layout === 'list' ? 'secondary' : 'outline'}
+                size="icon"
+                onClick={() => setLayout('list')}
+                aria-label="List view"
+                title="List View"
+                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
+                data-state={layout === 'list' ? 'active' : 'inactive'}
+            >
+                <List className="h-5 w-5" />
+            </Button>
+            <Popover open={isFiltersPopoverOpen} onOpenChange={setIsFiltersPopoverOpen}>
+                <PopoverTrigger asChild>
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm"
+                    title="Open Filters"
+                >
+                    <Filter className="h-5 w-5" />
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 border-none shadow-2xl bg-transparent" sideOffset={10}>
+                <FilterControls />
+                </PopoverContent>
+            </Popover>
+          </div>
         </div>
         
         {activeTagFilter && (
@@ -581,7 +577,7 @@ export default function HomePage() {
           filteredNotes.length > 0 ? (
             <div className={cn(
               "gap-6 animate-fadeIn",
-              layout === 'grid' && !showTrashedNotes ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "flex flex-col"
+              layout === 'grid' && !showTrashedNotes ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "flex flex-col"
             )}>
               {filteredNotes.map((note) => (
                 <NoteCard
@@ -634,5 +630,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
