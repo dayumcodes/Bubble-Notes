@@ -1,3 +1,4 @@
+
 "use client";
 import type { Note } from "@/types/note";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
