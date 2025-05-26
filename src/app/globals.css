@@ -105,6 +105,12 @@
   html {
     @apply transition-colors duration-300;
   }
+  body.dragging-bubble {
+    user-select: none;
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+ */
+  }
 }
 
 @keyframes floatBubble {
@@ -128,4 +134,15 @@
   50% { transform: scale(0.9, 1.1) translateY(-10px); }
   70% { transform: scale(1.05, 0.95) translateY(2px); }
   100% { transform: scale(1); }
+}
+
+/* Styles for draggable bubbles */
+.bubble-card {
+  cursor: grab;
+}
+
+.bubble-card.is-dragging {
+  animation-play-state: paused !important; /* Important to override existing animation */
+  cursor: grabbing !important;
+  z-index: 1000; /* Ensure dragged bubble is on top of others */
 }
