@@ -9,63 +9,66 @@ import { NoteFormDialog } from "@/components/NoteFormDialog";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, LayoutGrid, List, Droplets } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, LayoutGrid, List, Droplets, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 
-
 const initialNotesData: Note[] = [
-  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'] },
-  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5, tags: ['work', 'project omega'] },
-  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30, tags: ['devlog', 'gamedev'] },
-  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now(), tags: ['todo'] },
+  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true },
+  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5, tags: ['work', 'project omega'], isPinned: false },
+  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30, tags: ['devlog', 'gamedev'], isPinned: false },
+  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now(), tags: ['todo'], isPinned: true },
+  { id: '5', title: 'Recipe for Pixel Pie', content: 'Ingredients: Digital flour, virtual sugar, 1 byte of spice.', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 5, tags: ['food', 'recipe'], isPinned: false },
 ];
 
-type LayoutMode = 'grid' | 'list' | 'bubble';
+type LayoutMode = 'bubble' | 'grid' | 'list';
 
 export default function HomePage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null);
-  const [layout, setLayout] = useState<LayoutMode>('bubble'); // Default to bubble view
-  
+  const [layout, setLayout] = useState<LayoutMode>('bubble');
+
   useEffect(() => {
-    // Load notes from localStorage or use initial data
     const storedNotes = localStorage.getItem('pixel-notes');
     if (storedNotes) {
       try {
-        const parsedNotes = JSON.parse(storedNotes);
-        // Basic validation
+        const parsedNotes: Note[] = JSON.parse(storedNotes).map((n: any) => ({
+          ...n,
+          tags: n.tags || [],
+          isPinned: n.isPinned || false,
+        }));
         if (Array.isArray(parsedNotes) && parsedNotes.every(n => typeof n.id === 'string' && typeof n.title === 'string')) {
           setNotes(parsedNotes);
         } else {
-          setNotes(initialNotesData);
+          setNotes(initialNotesData.map(n => ({...n, isPinned: n.isPinned || false})));
         }
       } catch (error) {
         console.error("Failed to parse notes from localStorage:", error);
-        setNotes(initialNotesData);
+        setNotes(initialNotesData.map(n => ({...n, isPinned: n.isPinned || false})));
       }
     } else {
-      setNotes(initialNotesData);
+      setNotes(initialNotesData.map(n => ({...n, isPinned: n.isPinned || false})));
     }
   }, []);
 
   useEffect(() => {
-    // Save notes to localStorage whenever they change
-    if (notes.length > 0 || localStorage.getItem('pixel-notes')) { // Avoid saving empty initial array if nothing was there
-        localStorage.setItem('pixel-notes', JSON.stringify(notes));
+    if (notes.length > 0 || localStorage.getItem('pixel-notes')) {
+      localStorage.setItem('pixel-notes', JSON.stringify(notes));
     }
   }, [notes]);
-
 
   const handleAddNote = (noteData: Omit<Note, "id" | "timestamp">) => {
     const newNote: Note = {
       ...noteData,
       id: crypto.randomUUID(),
       timestamp: Date.now(),
+      isPinned: noteData.isPinned || false,
     };
     setNotes((prevNotes) => [newNote, ...prevNotes]);
   };
@@ -73,7 +76,7 @@ export default function HomePage() {
   const handleEditNote = (noteData: Omit<Note, "id" | "timestamp">, id: string) => {
     setNotes((prevNotes) =>
       prevNotes.map((note) =>
-        note.id === id ? { ...note, ...noteData, timestamp: Date.now() } : note
+        note.id === id ? { ...note, ...noteData, timestamp: Date.now(), isPinned: noteData.isPinned || false } : note
       )
     );
     setEditingNote(null);
@@ -101,19 +104,46 @@ export default function HomePage() {
     setIsModalOpen(true);
   };
 
-  const openAddModal = () => { 
+  const openAddModal = () => {
     setEditingNote(null);
     setIsModalOpen(true);
   };
 
-  const normalizedSearchTerm = searchTerm.toLowerCase();
-  const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(normalizedSearchTerm) ||
-      (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
-      (note.tags && note.tags.some(tag => tag.toLowerCase().includes(normalizedSearchTerm)))
-  ).sort((a, b) => b.timestamp - a.timestamp);
+  const handleTogglePin = (noteId: string) => {
+    setNotes(prevNotes => 
+      prevNotes.map(note => 
+        note.id === noteId ? { ...note, isPinned: !note.isPinned } : note
+      )
+    );
+  };
+  
+  const handleTagClick = (tag: string) => {
+    setActiveTagFilter(current => (current === tag ? null : tag));
+  };
 
+  const clearTagFilter = () => {
+    setActiveTagFilter(null);
+  };
+
+  const normalizedSearchTerm = searchTerm.toLowerCase();
+  const filteredNotes = notes
+    .filter((note) => {
+      const matchesSearch =
+        note.title.toLowerCase().includes(normalizedSearchTerm) ||
+        (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
+        (note.tags && note.tags.some(tag => tag.toLowerCase().includes(normalizedSearchTerm)));
+      
+      const matchesTagFilter = activeTagFilter
+        ? note.tags && note.tags.includes(activeTagFilter)
+        : true;
+        
+      return matchesSearch && matchesTagFilter;
+    })
+    .sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.timestamp - a.timestamp;
+    });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -127,35 +157,35 @@ export default function HomePage() {
               placeholder="Search notes, content, or tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full shadow-sm pl-11 pr-4 py-2.5 rounded-md border" 
+              className="w-full shadow-sm pl-11 pr-4 py-2.5 rounded-md border"
               aria-label="Search notes"
             />
           </div>
           <div className="flex gap-2">
-             <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => setLayout('bubble')} 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setLayout('bubble')}
               disabled={layout === 'bubble'}
               aria-label="Bubble view"
               title="Bubble View"
             >
               <Droplets className="h-5 w-5" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => setLayout('grid')} 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setLayout('grid')}
               disabled={layout === 'grid'}
               aria-label="Grid view"
               title="Grid View"
             >
               <LayoutGrid className="h-5 w-5" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => setLayout('list')} 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setLayout('list')}
               disabled={layout === 'list'}
               aria-label="List view"
               title="List View"
@@ -164,6 +194,18 @@ export default function HomePage() {
             </Button>
           </div>
         </div>
+
+        {activeTagFilter && (
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <span className="text-sm text-muted-foreground">Filtering by:</span>
+            <Badge variant="secondary" className="font-medium">
+              {activeTagFilter}
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={clearTagFilter} className="p-1 h-auto text-muted-foreground hover:text-destructive">
+              <XCircle className="h-4 w-4 mr-1" /> Clear
+            </Button>
+          </div>
+        )}
 
         {layout === 'bubble' ? (
           <BubbleViewContainer notes={filteredNotes} onEditNote={openEditModal} />
@@ -179,6 +221,8 @@ export default function HomePage() {
                   note={note}
                   onEdit={openEditModal}
                   onDelete={requestDeleteNote}
+                  onTogglePin={handleTogglePin}
+                  onTagClick={handleTagClick}
                   layout={layout}
                 />
               ))}
@@ -186,7 +230,7 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-10">
               <p className="text-xl text-muted-foreground">
-                {searchTerm ? "No notes match your search." : "You have no notes. Click '+' to add one!"}
+                {searchTerm || activeTagFilter ? "No notes match your filters." : "You have no notes. Click '+' to add one!"}
               </p>
             </div>
           )

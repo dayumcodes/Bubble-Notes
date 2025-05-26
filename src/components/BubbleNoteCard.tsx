@@ -4,6 +4,7 @@
 import type { Note } from "@/types/note";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { Pin } from "lucide-react"; // Import Pin icon
 
 interface BubbleNoteCardProps {
   note: Note;
@@ -21,7 +22,7 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
   const [size, setSize] = useState(BUBBLE_MIN_SIZE);
 
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ top: Math.random() * 200, left: Math.random() * 200 }); // Initial placeholder
+  const [position, setPosition] = useState({ top: Math.random() * 200, left: Math.random() * 200 });
   const dragStartOffset = useRef({ x: 0, y: 0 });
   const bubbleRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false); 
@@ -79,11 +80,9 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
     if (!parentEl) return;
     const parentRect = parentEl.getBoundingClientRect();
 
-    // Calculate target position relative to the viewport
     let targetViewportX = clientX - dragStartOffset.current.x;
     let targetViewportY = clientY - dragStartOffset.current.y;
 
-    // Convert to position relative to the parent container
     let newLeft = targetViewportX - parentRect.left;
     let newTop = targetViewportY - parentRect.top;
 
@@ -105,13 +104,11 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
   
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (event.button !== 0) return; 
-    // event.preventDefault(); // Usually not needed for mousedown, can interfere with focus/click
     internalHandleDragStart(event.clientX, event.clientY);
   }, [internalHandleDragStart]);
 
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
-    if (event.touches.length === 1) { // Handle single touch
-      // event.preventDefault(); // Avoid if it prevents click, handle in touchmove
+    if (event.touches.length === 1) {
       internalHandleDragStart(event.touches[0].clientX, event.touches[0].clientY);
     }
   }, [internalHandleDragStart]);
@@ -123,7 +120,7 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
     };
     const onTouchMove = (event: TouchEvent) => {
       if (!isDraggingRef.current || event.touches.length !== 1) return;
-      event.preventDefault(); // Prevent page scroll during drag
+      event.preventDefault(); 
       internalHandleDragMove(event.touches[0].clientX, event.touches[0].clientY);
     };
 
@@ -172,7 +169,17 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
   };
 
   const textColorClass = "dark:text-[hsl(var(--bubble-text-dark))] text-[hsl(var(--bubble-text-light))]";
-  const bubbleBgClass = "dark:bg-primary/30 bg-primary/70";
+  
+  // Modify bubble background if pinned
+  const bubbleBgClass = note.isPinned 
+    ? "dark:bg-amber-500/50 bg-amber-400/80" 
+    : "dark:bg-primary/30 bg-primary/70";
+
+  // Modify box shadow if pinned
+  const bubbleShadow = note.isPinned
+    ? `0 0 18px 3px hsla(45, 90%, 60%, 0.7), 0 0 10px 2px hsla(40, 80%, 50%, 0.5)` // Brighter, more prominent yellow/gold glow
+    : `0 0 15px 2px hsla(var(--bubble-glow-light)/0.6), 0 0 8px 1px hsla(var(--bubble-glow-dark)/0.4)`;
+
 
   return (
     <div
@@ -190,13 +197,13 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
         height: `${size}px`,
         top: `${position.top}px`,
         left: `${position.left}px`,
-        boxShadow: `0 0 15px 2px hsla(var(--bubble-glow-light)/0.6), 0 0 8px 1px hsla(var(--bubble-glow-dark)/0.4)`,
-        touchAction: 'none', // Recommended for draggable elements on touch devices
+        boxShadow: bubbleShadow,
+        touchAction: 'none',
         ...animationParams,
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
-      onClick={handleClick} // onClick works for both mouse and tap after touch
+      onClick={handleClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -204,6 +211,9 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
       }}
       title={note.title}
     >
+      {note.isPinned && (
+        <Pin className="absolute top-1.5 right-1.5 h-3 w-3 text-white/90 dark:text-black/70 opacity-80" />
+      )}
       <span 
         className={cn("text-center font-medium break-words text-sm select-none", textColorClass)}
         style={{ pointerEvents: isDraggingRef.current ? 'none' : 'auto' }}
@@ -213,4 +223,3 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
     </div>
   );
 }
-

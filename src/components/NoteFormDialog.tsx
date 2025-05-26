@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useEffect, useState } from "react";
 
 interface NoteFormDialogProps {
@@ -26,18 +27,21 @@ interface NoteFormDialogProps {
 export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: NoteFormDialogProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [tags, setTags] = useState(""); // Comma-separated string
+  const [tags, setTags] = useState("");
+  const [isPinned, setIsPinned] = useState(false);
 
   useEffect(() => {
-    if (isOpen) { // Only reset form when dialog opens or initialData changes while open
+    if (isOpen) {
       if (initialData) {
         setTitle(initialData.title);
-        setContent(initialData.content || ""); // Ensure content is always a string
+        setContent(initialData.content || "");
         setTags(initialData.tags ? initialData.tags.join(", ") : "");
+        setIsPinned(initialData.isPinned || false);
       } else {
         setTitle("");
         setContent("");
         setTags("");
+        setIsPinned(false);
       }
     }
   }, [initialData, isOpen]);
@@ -45,15 +49,12 @@ export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-        // Consider using react-hook-form for more robust validation
-        // For now, a simple alert or a more integrated error display would be better
-        // For example, set an error state and display it near the title input
         alert("Title cannot be empty.");
         return;
     }
     const tagsArray = tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0);
-    onSubmit({ title, content, tags: tagsArray }, initialData?.id);
-    onOpenChange(false); // Close dialog on submit
+    onSubmit({ title, content, tags: tagsArray, isPinned }, initialData?.id);
+    onOpenChange(false);
   };
 
   return (
@@ -103,6 +104,18 @@ export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: 
                 className="col-span-3"
                 placeholder="e.g., work, personal, ideas"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="isPinned" className="text-right">
+                Pin Note
+              </Label>
+              <div className="col-span-3 flex items-center">
+                <Checkbox
+                    id="isPinned"
+                    checked={isPinned}
+                    onCheckedChange={(checked) => setIsPinned(!!checked)}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
