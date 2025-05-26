@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Note } from "@/types/note";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/NoteCard";
@@ -14,6 +14,15 @@ import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette } from "luci
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 import { Separator } from "@/components/ui/separator";
+import type { HSLColor } from "@/lib/color-utils";
+import {
+  hexToHsl,
+  hslToHex,
+  getContrastingTextColor,
+  formatHslString,
+  parseHslString,
+  deriveGlowColors,
+} from "@/lib/color-utils";
 
 const initialNotesData: Note[] = [
   { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true },
@@ -26,25 +35,40 @@ const initialNotesData: Note[] = [
 type LayoutMode = 'bubble' | 'grid' | 'list';
 
 const THEME_DEFAULT_PALETTE_NAME = 'Theme Default';
+const CUSTOM_PALETTE_NAME = 'Custom';
+
 interface BubblePaletteConfig {
   name: string;
-  // HSL values as strings "H S% L%"
-  bg: string; // Main background for the bubble
-  previewBg?: string; // Optional: if the button preview needs a slightly different shade
-  text: string;
-  glow1: string;
-  glow2: string;
+  bg: string; // Main background for the bubble (HSL string "H S% L%")
+  previewBg?: string; // Optional: if the button preview needs a different shade (HSL string "H S% L%")
+  text: string; // Text color (HSL string "H S% L%")
+  glow1: string; // Glow1 color (HSL string "H S% L%")
+  glow2: string; // Glow2 color (HSL string "H S% L%")
 }
 
-// HSL values are strings like "H S% L%"
-const bubblePalettes: BubblePaletteConfig[] = [
-  { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, // Actual values derived from CSS vars
-  { name: 'Ocean', previewBg: '200 80% 70%', bg: '200 80% 70%', text: '200 100% 10%', glow1: '190 70% 50%', glow2: '210 90% 80%' },
-  { name: 'Sunset', previewBg: '30 100% 75%', bg: '30 100% 75%', text: '20 100% 15%', glow1: '20 80% 60%', glow2: '40 100% 85%' },
-  { name: 'Forest', previewBg: '120 50% 60%', bg: '120 50% 60%', text: '100 100% 10%', glow1: '110 40% 40%', glow2: '130 60% 75%' },
-  { name: 'Lavender', previewBg: '270 60% 80%', bg: '270 60% 80%', text: '270 100% 20%', glow1: '260 50% 65%', glow2: '280 70% 90%' },
-  { name: 'Coral', previewBg: '10 90% 70%', bg: '10 90% 70%', text: '5 100% 15%', glow1: '5 80% 55%', glow2: '15 100% 80%' },
+const bubblePalettes: Omit<BubblePaletteConfig, 'previewBg'>[] = [ // previewBg will be bg for predefined
+  { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, // Actual values derived from CSS vars for theme default
+  { name: 'Ocean', bg: '200 80% 70%', text: '200 100% 10%', glow1: '190 70% 50%', glow2: '210 90% 80%' },
+  { name: 'Sunset', bg: '30 100% 75%', text: '20 100% 15%', glow1: '20 80% 60%', glow2: '40 100% 85%' },
+  { name: 'Forest', bg: '120 50% 60%', text: '100 100% 10%', glow1: '110 40% 40%', glow2: '130 60% 75%' },
+  { name: 'Lavender', bg: '270 60% 80%', text: '270 100% 20%', glow1: '260 50% 65%', glow2: '280 70% 90%' },
+  { name: 'Coral', bg: '10 90% 70%', text: '5 100% 15%', glow1: '5 80% 55%', glow2: '15 100% 80%' },
+  { name: CUSTOM_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: '' }, // Placeholder for custom
 ];
+
+// LocalStorage keys
+const NOTES_KEY = 'pixel-notes';
+const LAYOUT_KEY = 'pixel-notes-layout';
+const PALETTE_NAME_KEY = 'pixel-notes-palette-name';
+const CUSTOM_PALETTE_CONFIG_KEY = 'pixel-notes-custom-palette-config';
+
+const DEFAULT_CUSTOM_PALETTE: BubblePaletteConfig = {
+  name: CUSTOM_PALETTE_NAME,
+  bg: '200 50% 85%', // Default custom bg: light blue
+  text: '200 100% 10%', // Default custom text
+  glow1: '190 40% 70%', // Default custom glow1
+  glow2: '210 60% 90%', // Default custom glow2
+};
 
 
 export default function HomePage() {
@@ -55,11 +79,17 @@ export default function HomePage() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null);
+  
   const [layout, setLayout] = useState<LayoutMode>('bubble');
   const [selectedPaletteName, setSelectedPaletteName] = useState<string>(THEME_DEFAULT_PALETTE_NAME);
+  const [customBubblePalette, setCustomBubblePalette] = useState<BubblePaletteConfig>(DEFAULT_CUSTOM_PALETTE);
+  const [isMounted, setIsMounted] = useState(false);
+
 
   useEffect(() => {
-    const storedNotes = localStorage.getItem('pixel-notes');
+    setIsMounted(true);
+    // Load notes
+    const storedNotes = localStorage.getItem(NOTES_KEY);
     let parsedNotes: Note[] = initialNotesData.map(n => ({...n, isPinned: n.isPinned || false, tags: n.tags || []}));
     if (storedNotes) {
       try {
@@ -77,27 +107,62 @@ export default function HomePage() {
     }
     setNotes(parsedNotes);
 
-    const storedLayout = localStorage.getItem('pixel-notes-layout') as LayoutMode | null;
+    // Load layout
+    const storedLayout = localStorage.getItem(LAYOUT_KEY) as LayoutMode | null;
     if (storedLayout && ['bubble', 'grid', 'list'].includes(storedLayout)) {
       setLayout(storedLayout);
     } else {
-      setLayout('bubble'); // Default to bubble
+      setLayout('bubble');
     }
 
-    const storedPalette = localStorage.getItem('pixel-notes-palette');
-    if (storedPalette && bubblePalettes.some(p => p.name === storedPalette)) {
-      setSelectedPaletteName(storedPalette);
+    // Load selected palette name
+    const storedPaletteName = localStorage.getItem(PALETTE_NAME_KEY);
+    if (storedPaletteName && bubblePalettes.some(p => p.name === storedPaletteName)) {
+      setSelectedPaletteName(storedPaletteName);
+    } else {
+      setSelectedPaletteName(THEME_DEFAULT_PALETTE_NAME);
+    }
+
+    // Load custom palette configuration
+    const storedCustomPalette = localStorage.getItem(CUSTOM_PALETTE_CONFIG_KEY);
+    if (storedCustomPalette) {
+      try {
+        const parsedCustomPalette = JSON.parse(storedCustomPalette);
+        if (parsedCustomPalette.name === CUSTOM_PALETTE_NAME) {
+          setCustomBubblePalette(parsedCustomPalette);
+        }
+      } catch (error) {
+        console.error("Failed to parse custom bubble palette from localStorage:", error);
+        setCustomBubblePalette(DEFAULT_CUSTOM_PALETTE);
+      }
+    } else {
+       setCustomBubblePalette(DEFAULT_CUSTOM_PALETTE);
     }
 
   }, []);
 
   useEffect(() => {
-    if (notes.length > 0 || localStorage.getItem('pixel-notes')) {
-      localStorage.setItem('pixel-notes', JSON.stringify(notes));
+    if (!isMounted) return;
+    if (notes.length > 0 || localStorage.getItem(NOTES_KEY)) {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
     }
-    localStorage.setItem('pixel-notes-layout', layout);
-    localStorage.setItem('pixel-notes-palette', selectedPaletteName);
-  }, [notes, layout, selectedPaletteName]);
+  }, [notes, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    localStorage.setItem(LAYOUT_KEY, layout);
+  }, [layout, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    localStorage.setItem(PALETTE_NAME_KEY, selectedPaletteName);
+  }, [selectedPaletteName, isMounted]);
+  
+  useEffect(() => {
+    if (!isMounted || selectedPaletteName !== CUSTOM_PALETTE_NAME) return;
+    localStorage.setItem(CUSTOM_PALETTE_CONFIG_KEY, JSON.stringify(customBubblePalette));
+  }, [customBubblePalette, selectedPaletteName, isMounted]);
+
 
   const handleAddNote = (noteData: Omit<Note, "id" | "timestamp">) => {
     const newNote: Note = {
@@ -150,7 +215,7 @@ export default function HomePage() {
     setNotes(prevNotes => 
       prevNotes.map(note => 
         note.id === noteId ? { ...note, isPinned: !note.isPinned } : note
-      ).sort((a, b) => { // Re-sort after pinning
+      ).sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         return b.timestamp - a.timestamp;
@@ -166,6 +231,27 @@ export default function HomePage() {
     setActiveTagFilter(null);
   };
 
+  const handleCustomBgColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newBgHex = event.target.value;
+    const newBgHsl = hexToHsl(newBgHex);
+
+    if (newBgHsl) {
+      const newTextHex = getContrastingTextColor(newBgHex);
+      const newTextHsl = hexToHsl(newTextHex); // Text color also needs to be HSL for consistency
+      const glows = deriveGlowColors(newBgHsl);
+
+      if (newTextHsl) {
+        setCustomBubblePalette({
+          name: CUSTOM_PALETTE_NAME,
+          bg: formatHslString(newBgHsl),
+          text: formatHslString(newTextHsl),
+          glow1: glows.glow1,
+          glow2: glows.glow2,
+        });
+      }
+    }
+  };
+  
   const normalizedSearchTerm = searchTerm.toLowerCase();
   const filteredNotes = notes
     .filter((note) => {
@@ -186,21 +272,35 @@ export default function HomePage() {
       return b.timestamp - a.timestamp;
     });
 
-  const activePaletteConfig = bubblePalettes.find(p => p.name === selectedPaletteName);
+  let activePaletteConfigResolved: BubblePaletteConfig | undefined;
+  if (selectedPaletteName === CUSTOM_PALETTE_NAME) {
+    activePaletteConfigResolved = customBubblePalette;
+  } else if (selectedPaletteName === THEME_DEFAULT_PALETTE_NAME) {
+     activePaletteConfigResolved = { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: ''}; // Use CSS vars
+  } else {
+    activePaletteConfigResolved = bubblePalettes.find(p => p.name === selectedPaletteName) as BubblePaletteConfig;
+  }
+  
   const bubbleViewDynamicStyles =
-    activePaletteConfig && selectedPaletteName !== THEME_DEFAULT_PALETTE_NAME
+    activePaletteConfigResolved && selectedPaletteName !== THEME_DEFAULT_PALETTE_NAME
       ? {
-          '--user-bubble-bg': activePaletteConfig.bg,
-          '--user-bubble-text': activePaletteConfig.text,
-          '--user-bubble-glow1': activePaletteConfig.glow1,
-          '--user-bubble-glow2': activePaletteConfig.glow2,
+          '--user-bubble-bg': activePaletteConfigResolved.bg,
+          '--user-bubble-text': activePaletteConfigResolved.text,
+          '--user-bubble-glow1': activePaletteConfigResolved.glow1,
+          '--user-bubble-glow2': activePaletteConfigResolved.glow2,
         }
       : {};
+
+  const currentCustomBgHex = isMounted && customBubblePalette?.bg ? hslToHex(parseHslString(customBubblePalette.bg)!) : '#cccccc';
+
+  if (!isMounted) {
+    return <div className="min-h-screen flex items-center justify-center bg-background"><p>Loading notes...</p></div>; // Or a proper skeleton loader
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header layout={layout} />
-      <main className="flex-grow container mx-auto px-4 pt-20 pb-28 flex flex-col"> {/* Increased pb for FAB */}
+      <main className="flex-grow container mx-auto px-4 pt-20 pb-28 flex flex-col">
         <div className="my-8 flex flex-col sm:flex-row justify-center items-center gap-4">
           <div className="relative w-full max-w-xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
@@ -250,35 +350,66 @@ export default function HomePage() {
           {layout === 'bubble' && (
             <>
               <Separator className="my-2 w-1/2 max-w-md" />
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Palette size={16} /> Bubble Palette:
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {bubblePalettes.map((palette) => (
-                    <Button
-                      key={palette.name}
-                      variant={selectedPaletteName === palette.name ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedPaletteName(palette.name)}
-                      className={cn(
-                        "p-2 h-auto rounded-md",
-                        selectedPaletteName === palette.name && "ring-2 ring-ring ring-offset-2"
-                      )}
-                      title={palette.name}
-                    >
-                      {palette.name === THEME_DEFAULT_PALETTE_NAME ? (
-                        <span className="text-xs">Theme</span>
-                      ) : (
-                        <div 
-                          className="w-5 h-5 rounded-full border border-border"
-                          style={{ backgroundColor: `hsl(${palette.previewBg || palette.bg})` }}
-                        />
-                      )}
-                       <span className="ml-1.5 text-xs hidden sm:inline">{palette.name.replace(THEME_DEFAULT_PALETTE_NAME, "Theme")}</span>
-                    </Button>
-                  ))}
+                  {bubblePalettes.map((palette) => {
+                    const isActive = selectedPaletteName === palette.name;
+                    let previewColor = palette.bg;
+                    if (palette.name === CUSTOM_PALETTE_NAME && customBubblePalette) {
+                      previewColor = customBubblePalette.bg;
+                    } else if (palette.name === THEME_DEFAULT_PALETTE_NAME) {
+                       // For Theme Default, we can't easily get CSS var in JS for preview
+                       // So, we'll use a generic look or specific color
+                        previewColor = 'var(--primary)'; // Rely on CSS to resolve this for the actual button style
+                    }
+
+                    return (
+                      <Button
+                        key={palette.name}
+                        variant={isActive ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedPaletteName(palette.name)}
+                        className={cn(
+                          "p-2 h-auto rounded-md",
+                          isActive && "ring-2 ring-ring ring-offset-2"
+                        )}
+                        title={palette.name}
+                        style={palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}}
+                      >
+                        {palette.name === THEME_DEFAULT_PALETTE_NAME || palette.name === CUSTOM_PALETTE_NAME ? (
+                           <span className="text-xs">{palette.name === THEME_DEFAULT_PALETTE_NAME ? "Theme" : "Custom"}</span>
+                        ) : (
+                          <div 
+                            className="w-5 h-5 rounded-full border border-border"
+                            style={{ backgroundColor: `hsl(${previewColor})` }}
+                          />
+                        )}
+                         <span className="ml-1.5 text-xs hidden sm:inline">
+                           {palette.name.replace(THEME_DEFAULT_PALETTE_NAME, "Theme").replace(CUSTOM_PALETTE_NAME, "Custom")}
+                         </span>
+                      </Button>
+                    );
+                  })}
                 </div>
+                {selectedPaletteName === CUSTOM_PALETTE_NAME && (
+                  <div className="mt-3 flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/50">
+                    <label htmlFor="custom-bubble-bg" className="text-xs text-muted-foreground">
+                      Custom Background Color:
+                    </label>
+                    <input
+                      type="color"
+                      id="custom-bubble-bg"
+                      value={currentCustomBgHex}
+                      onChange={handleCustomBgColorChange}
+                      className="w-20 h-8 p-0 border-none rounded cursor-pointer"
+                      title="Pick custom background color"
+                    />
+                     <p className="text-xs text-muted-foreground mt-1">Text & glow colors derived automatically.</p>
+                  </div>
+                )}
               </div>
             </>
           )}
