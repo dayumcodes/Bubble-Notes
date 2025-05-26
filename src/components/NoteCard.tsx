@@ -1,7 +1,7 @@
 
 "use client";
 import type { Note } from "@/types/note";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -17,22 +17,35 @@ export function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
   });
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
-      <CardHeader>
-        <CardTitle className="font-pixel text-2xl text-primary">{note.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-muted-foreground text-sm mb-2">{formattedTimestamp}</p>
-        <p className="whitespace-pre-wrap">{note.content}</p>
-      </CardContent>
-      <CardFooter className="flex justify-end gap-2">
-        <Button variant="outline" size="icon" onClick={() => onEdit(note)} aria-label="Edit note">
+    <Card className="shadow-sm border relative group rounded-md flex flex-col h-full">
+      <div className="absolute top-2.5 right-2.5 flex gap-1 z-10">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onEdit(note)} 
+          aria-label="Edit note" 
+          className="h-7 w-7 p-1 text-muted-foreground hover:text-foreground hover:bg-accent/50"
+        >
           <Pencil className="h-4 w-4" />
         </Button>
-        <Button variant="destructive" size="icon" onClick={() => onDelete(note.id)} aria-label="Delete note">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onDelete(note.id)} 
+          aria-label="Delete note" 
+          className="h-7 w-7 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
-      </CardFooter>
+      </div>
+      <CardContent className="p-4 pt-10 flex flex-col flex-grow"> {/* Added pt-10 to give space for absolute positioned buttons */}
+        <h3 className="text-md font-medium text-foreground mb-1">{note.title}</h3>
+        <p className="text-xs text-muted-foreground mb-3">{formattedTimestamp}</p>
+        {note.content && (
+          <p className="whitespace-pre-wrap text-sm text-foreground/90 flex-grow">{note.content}</p>
+        )}
+        {!note.content && <div className="flex-grow"></div>} {/* Ensures card takes full height even without content */}
+      </CardContent>
     </Card>
   );
 }

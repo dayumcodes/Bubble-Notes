@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,9 +6,8 @@ import type { Note } from "@/types/note";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/NoteCard";
 import { NoteFormDialog } from "@/components/NoteFormDialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Search } from "lucide-react"; // Added Search icon
 
 const initialNotesData: Note[] = [
   { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2 },
@@ -23,8 +23,8 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   
-  // Effect to load initial notes only on client-side after mount
   useEffect(() => {
+    // Load initial notes only on client-side after mount to allow crypto.randomUUID
     setNotes(initialNotesData);
   }, []);
 
@@ -56,34 +56,35 @@ export default function HomePage() {
     setIsModalOpen(true);
   };
 
-  const openAddModal = () => {
-    setEditingNote(null);
-    setIsModalOpen(true);
-  };
+  // openAddModal is no longer called from UI, but kept for potential programmatic use
+  // const openAddModal = () => { 
+  //   setEditingNote(null);
+  //   setIsModalOpen(true);
+  // };
 
   const filteredNotes = notes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+      (note.content && note.content.toLowerCase().includes(searchTerm.toLowerCase()))
+  ).sort((a, b) => b.timestamp - a.timestamp);
 
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-grow container mx-auto px-4 pt-20 pb-8">
-        <div className="my-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <Input
-            type="search"
-            placeholder="Search notes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 shadow-sm"
-            aria-label="Search notes"
-          />
-          <Button onClick={openAddModal} className="bg-primary hover:bg-primary/90 shadow-md">
-            <Plus className="mr-2 h-4 w-4" /> Add New Note
-          </Button>
+        <div className="my-8 flex justify-center">
+          <div className="relative w-full max-w-xl">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="Search notes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full shadow-sm pl-11 pr-4 py-2.5 rounded-md border" 
+              aria-label="Search notes"
+            />
+          </div>
         </div>
 
         {filteredNotes.length > 0 ? (
@@ -100,7 +101,7 @@ export default function HomePage() {
         ) : (
           <div className="text-center py-10">
             <p className="text-xl text-muted-foreground">
-              {searchTerm ? "No notes match your search." : "No notes yet. Add one!"}
+              {searchTerm ? "No notes match your search." : "You have no notes."}
             </p>
           </div>
         )}
