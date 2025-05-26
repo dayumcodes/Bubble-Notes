@@ -4,7 +4,7 @@
 import type { Note } from "@/types/note";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Pin } from "lucide-react"; // Import Pin icon
+import { Pin } from "lucide-react";
 
 interface BubbleNoteCardProps {
   note: Note;
@@ -13,8 +13,8 @@ interface BubbleNoteCardProps {
   containerHeight: number;
 }
 
-const BUBBLE_MIN_SIZE = 80; // px
-const BUBBLE_MAX_SIZE = 150; // px
+const BUBBLE_MIN_SIZE = 80; 
+const BUBBLE_MAX_SIZE = 150; 
 
 export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }: BubbleNoteCardProps) {
   const [isBouncing, setIsBouncing] = useState(false);
@@ -167,40 +167,34 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
     if (title.length <= maxLength) return title;
     return title.substring(0, maxLength) + "...";
   };
-
-  const textColorClass = "dark:text-[hsl(var(--bubble-text-dark))] text-[hsl(var(--bubble-text-light))]";
   
-  // Modify bubble background if pinned
-  const bubbleBgClass = note.isPinned 
-    ? "dark:bg-amber-500/50 bg-amber-400/80" 
-    : "dark:bg-primary/30 bg-primary/70";
+  const pinnedBgHsl = '28 100% 60%'; // Amber/Gold for pinned bubble background
+  const pinnedTextHsl = '0 0% 100%'; // White text for pinned
+  const pinnedGlow1Hsl = '45 90% 60%'; // Brighter gold glow
+  const pinnedGlow2Hsl = '40 80% 50%'; // Softer gold glow
 
-  // Modify box shadow if pinned
-  const bubbleShadow = note.isPinned
-    ? `0 0 18px 3px hsla(45, 90%, 60%, 0.7), 0 0 10px 2px hsla(40, 80%, 50%, 0.5)` // Brighter, more prominent yellow/gold glow
-    : `0 0 15px 2px hsla(var(--bubble-glow-light)/0.6), 0 0 8px 1px hsla(var(--bubble-glow-dark)/0.4)`;
-
+  const bubbleStyle: React.CSSProperties = {
+    width: `${size}px`,
+    height: `${size}px`,
+    top: `${position.top}px`,
+    left: `${position.left}px`,
+    backgroundColor: `hsl(${note.isPinned ? pinnedBgHsl : 'var(--user-bubble-bg)'})`,
+    color: `hsl(${note.isPinned ? pinnedTextHsl : 'var(--user-bubble-text)'})`,
+    boxShadow: `0 0 18px 3px hsla(${note.isPinned ? pinnedGlow1Hsl : 'var(--user-bubble-glow1)'} / 0.7), 0 0 10px 2px hsla(${note.isPinned ? pinnedGlow2Hsl : 'var(--user-bubble-glow2)'} / 0.5)`,
+    touchAction: 'none',
+    ...animationParams,
+  };
 
   return (
     <div
       ref={bubbleRef}
       className={cn(
         "bubble-card",
-        "absolute rounded-full flex items-center justify-center p-3 transition-all duration-300 ease-out shadow-xl",
-        "hover:shadow-2xl",
-        bubbleBgClass,
+        "absolute rounded-full flex items-center justify-center p-3 transition-all duration-300 ease-out", // Removed shadow-xl and hover:shadow-2xl, using dynamic boxShadow
         isBouncing ? "animate-[bounceBubbleActive_0.5s_ease-out]" : "animate-[floatBubble_var(--animation-duration,20s)_ease-in-out_infinite_alternate_var(--animation-delay,0s)]",
         isDragging && "is-dragging"
       )}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        top: `${position.top}px`,
-        left: `${position.left}px`,
-        boxShadow: bubbleShadow,
-        touchAction: 'none',
-        ...animationParams,
-      }}
+      style={bubbleStyle}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       onClick={handleClick}
@@ -212,10 +206,10 @@ export function BubbleNoteCard({ note, onEdit, containerWidth, containerHeight }
       title={note.title}
     >
       {note.isPinned && (
-        <Pin className="absolute top-1.5 right-1.5 h-3 w-3 text-white/90 dark:text-black/70 opacity-80" />
+        <Pin className="absolute top-1.5 right-1.5 h-3 w-3 opacity-80" style={{color: `hsl(${pinnedTextHsl})`}} />
       )}
       <span 
-        className={cn("text-center font-medium break-words text-sm select-none", textColorClass)}
+        className={cn("text-center font-medium break-words text-sm select-none")}
         style={{ pointerEvents: isDraggingRef.current ? 'none' : 'auto' }}
       >
         {truncateTitle(note.title, Math.floor(size / 10))}

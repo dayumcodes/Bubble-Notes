@@ -8,9 +8,10 @@ import { useEffect, useRef, useState } from "react";
 interface BubbleViewContainerProps {
   notes: Note[];
   onEditNote: (note: Note) => void;
+  dynamicStyle?: React.CSSProperties;
 }
 
-export function BubbleViewContainer({ notes, onEditNote }: BubbleViewContainerProps) {
+export function BubbleViewContainer({ notes, onEditNote, dynamicStyle }: BubbleViewContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -24,10 +25,9 @@ export function BubbleViewContainer({ notes, onEditNote }: BubbleViewContainerPr
       }
     };
     
-    updateDimensions(); // Initial measurement
+    updateDimensions(); 
     window.addEventListener('resize', updateDimensions);
     
-    // Also update if notes change, in case container size depends on it (though less likely here)
     const observer = new ResizeObserver(updateDimensions);
     if (containerRef.current) {
         observer.observe(containerRef.current);
@@ -39,16 +39,17 @@ export function BubbleViewContainer({ notes, onEditNote }: BubbleViewContainerPr
         observer.unobserve(containerRef.current);
       }
     };
-  }, [notes]);
+  }, [notes]); // Only re-run if notes array instance changes, not just content (usually fine)
 
 
   return (
     <div 
       ref={containerRef}
-      className="relative flex-grow w-full h-full min-h-[calc(100vh-10rem)] p-4 overflow-hidden 
+      className="relative flex-grow w-full h-full min-h-[calc(100vh-15rem)] p-4 overflow-hidden 
                  bg-gradient-to-br from-[hsl(var(--bubble-bg-start-light))] to-[hsl(var(--bubble-bg-end-light))]
                  dark:from-[hsl(var(--bubble-bg-start-dark))] dark:to-[hsl(var(--bubble-bg-end-dark))]
                  transition-colors duration-300"
+      style={dynamicStyle}
     >
       {dimensions.width > 0 && dimensions.height > 0 && notes.map((note) => (
         <BubbleNoteCard 
