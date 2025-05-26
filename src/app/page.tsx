@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Note } from "@/types/note";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/NoteCard";
@@ -10,7 +10,7 @@ import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette, Archive, Trash2, ListChecks, Undo2 } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Palette, Archive, Trash2, ListChecks, Undo2, Tags } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 import { Separator } from "@/components/ui/separator";
@@ -340,6 +340,20 @@ export default function HomePage() {
 
   const currentCustomBgHex = isMounted && customBubblePalette?.bg ? hslToHex(parseHslString(customBubblePalette.bg)!) : '#cccccc';
 
+  const allUniqueActiveTags = useMemo(() => {
+    if (showTrashedNotes) return [];
+    const tagSet = new Set<string>();
+    notes
+      .filter(note => note.status === 'active' || !note.status)
+      .forEach(note => {
+        if (note.tags) {
+          note.tags.forEach(tag => tagSet.add(tag));
+        }
+      });
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  }, [notes, showTrashedNotes]);
+
+
   if (!isMounted) {
     return <div className="min-h-screen flex items-center justify-center bg-background"><p>Loading notes...</p></div>;
   }
@@ -482,6 +496,30 @@ export default function HomePage() {
           )}
         </div>
 
+        {!showTrashedNotes && allUniqueActiveTags.length > 0 && (
+          <>
+            <Separator className="my-2 w-3/4 max-w-lg mx-auto" />
+            <div className="mb-6 flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Tags size={16} /> All Tags:
+                </div>
+                <div className="flex flex-wrap justify-center gap-2">
+                    {allUniqueActiveTags.map(tag => (
+                        <Badge
+                            key={tag}
+                            variant={activeTagFilter === tag ? 'default' : 'secondary'}
+                            onClick={() => handleTagClick(tag)}
+                            className="cursor-pointer text-xs"
+                            title={`Filter by tag: ${tag}`}
+                        >
+                            {tag}
+                        </Badge>
+                    ))}
+                </div>
+            </div>
+          </>
+        )}
+
 
         {activeTagFilter && (
           <div className="mb-4 flex items-center justify-center gap-2">
@@ -558,3 +596,4 @@ export default function HomePage() {
     </div>
   );
 }
+
