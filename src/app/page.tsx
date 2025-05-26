@@ -24,6 +24,7 @@ import {
   deriveGlowColors,
 } from "@/lib/color-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { LoadingSpinner } from "@/components/LoadingSpinner"; // Import the spinner
 
 const initialNotesData: Note[] = [
   { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true, status: 'active' },
@@ -394,7 +395,14 @@ export default function HomePage() {
 
 
   if (!isMounted) {
-    return <div className="min-h-screen flex items-center justify-center bg-background"><p>Loading notes...</p></div>;
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header layout={layout} />
+        <main className="flex-grow flex items-center justify-center">
+          <LoadingSpinner />
+        </main>
+      </div>
+    );
   }
 
   const FilterControls = () => (
@@ -505,7 +513,7 @@ export default function HomePage() {
                   title={`Filter by tag: ${tag}`}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  {tag}
+                  {highlightText(tag, searchTerm)}
                 </Badge>
               ))}
             </div>
@@ -597,7 +605,7 @@ export default function HomePage() {
           <div className="mb-4 flex items-center justify-center gap-2 animate-fadeIn">
             <span className="text-sm text-muted-foreground">Filtering by:</span>
             <Badge variant="secondary" className="font-medium modern-filter-button modern-filter-button-active">
-              {activeTagFilter}
+              {highlightText(activeTagFilter, searchTerm)}
             </Badge>
             <Button variant="ghost" size="sm" onClick={clearTagFilter} className="p-1 h-auto text-muted-foreground hover:text-destructive modern-filter-button">
               <XCircle className="h-4 w-4 mr-1" /> Clear
@@ -671,4 +679,28 @@ export default function HomePage() {
   );
 }
 
+// Helper function for highlighting text - can be moved to utils if used elsewhere
+const highlightText = (text: string | null | undefined, highlight: string | null | undefined) => {
+  if (!text) return "";
+  if (!highlight || !highlight.trim()) {
+    return <>{text}</>;
+  }
+  const escapedHighlight = highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escapedHighlight})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-primary/30 text-primary-foreground rounded-[0.2rem] px-0.5 mx-[1px]">
+            {part}
+          </mark>
+        ) : (
+          <React.Fragment key={i}>{part}</React.Fragment>
+        )
+      )}
+    </>
+  );
+};
     
