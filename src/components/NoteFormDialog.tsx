@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Note } from "@/types/note";
@@ -25,26 +26,34 @@ interface NoteFormDialogProps {
 export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: NoteFormDialogProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [tags, setTags] = useState(""); // Comma-separated string
 
   useEffect(() => {
-    if (initialData) {
-      setTitle(initialData.title);
-      setContent(initialData.content);
-    } else {
-      setTitle("");
-      setContent("");
+    if (isOpen) { // Only reset form when dialog opens or initialData changes while open
+      if (initialData) {
+        setTitle(initialData.title);
+        setContent(initialData.content || ""); // Ensure content is always a string
+        setTags(initialData.tags ? initialData.tags.join(", ") : "");
+      } else {
+        setTitle("");
+        setContent("");
+        setTags("");
+      }
     }
   }, [initialData, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-        // Basic validation, can be enhanced with react-hook-form
+        // Consider using react-hook-form for more robust validation
+        // For now, a simple alert or a more integrated error display would be better
+        // For example, set an error state and display it near the title input
         alert("Title cannot be empty.");
         return;
     }
-    onSubmit({ title, content }, initialData?.id);
-    onOpenChange(false);
+    const tagsArray = tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0);
+    onSubmit({ title, content, tags: tagsArray }, initialData?.id);
+    onOpenChange(false); // Close dialog on submit
   };
 
   return (
@@ -81,6 +90,18 @@ export function NoteFormDialog({ isOpen, onOpenChange, onSubmit, initialData }: 
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="col-span-3 min-h-[100px]"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tags" className="text-right">
+                Tags
+              </Label>
+              <Input
+                id="tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                className="col-span-3"
+                placeholder="e.g., work, personal, ideas"
               />
             </div>
           </div>

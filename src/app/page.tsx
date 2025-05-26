@@ -6,15 +6,17 @@ import type { Note } from "@/types/note";
 import { Header } from "@/components/Header";
 import { NoteCard } from "@/components/NoteCard";
 import { NoteFormDialog } from "@/components/NoteFormDialog";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button"; // Added Button for FAB
-import { Search, Plus } from "lucide-react"; // Added Search and Plus icons
+import { Button } from "@/components/ui/button";
+import { Search, Plus, LayoutGrid, List } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const initialNotesData: Note[] = [
-  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2 },
-  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5 },
-  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30 },
-  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now() },
+  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'] },
+  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5, tags: ['work', 'project omega'] },
+  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30, tags: ['devlog', 'gamedev'] },
+  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now(), tags: ['todo'] },
 ];
 
 
@@ -23,12 +25,13 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [noteIdToDelete, setNoteIdToDelete] = useState<string | null>(null);
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
   
   useEffect(() => {
-    // Load initial notes only on client-side after mount to allow crypto.randomUUID
     setNotes(initialNotesData);
   }, []);
-
 
   const handleAddNote = (noteData: Omit<Note, "id" | "timestamp">) => {
     const newNote: Note = {
@@ -52,6 +55,19 @@ export default function HomePage() {
     setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId));
   };
 
+  const requestDeleteNote = (noteId: string) => {
+    setNoteIdToDelete(noteId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteNote = () => {
+    if (noteIdToDelete) {
+      handleDeleteNote(noteIdToDelete);
+    }
+    setIsDeleteDialogOpen(false);
+    setNoteIdToDelete(null);
+  };
+
   const openEditModal = (note: Note) => {
     setEditingNote(note);
     setIsModalOpen(true);
@@ -62,39 +78,65 @@ export default function HomePage() {
     setIsModalOpen(true);
   };
 
+  const normalizedSearchTerm = searchTerm.toLowerCase();
   const filteredNotes = notes.filter(
     (note) =>
-      note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (note.content && note.content.toLowerCase().includes(searchTerm.toLowerCase()))
+      note.title.toLowerCase().includes(normalizedSearchTerm) ||
+      (note.content && note.content.toLowerCase().includes(normalizedSearchTerm)) ||
+      (note.tags && note.tags.some(tag => tag.toLowerCase().includes(normalizedSearchTerm)))
   ).sort((a, b) => b.timestamp - a.timestamp);
 
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-grow container mx-auto px-4 pt-20 pb-24"> {/* Increased pb for FAB */}
-        <div className="my-8 flex justify-center">
+      <main className="flex-grow container mx-auto px-4 pt-20 pb-24">
+        <div className="my-8 flex flex-col sm:flex-row justify-center items-center gap-4">
           <div className="relative w-full max-w-xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
             <Input
               type="search"
-              placeholder="Search notes..."
+              placeholder="Search notes, content, or tags..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full shadow-sm pl-11 pr-4 py-2.5 rounded-md border" 
               aria-label="Search notes"
             />
           </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setLayout('grid')} 
+              disabled={layout === 'grid'}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setLayout('list')} 
+              disabled={layout === 'list'}
+              aria-label="List view"
+            >
+              <List className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {filteredNotes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className={cn(
+            "gap-6",
+            layout === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "flex flex-col"
+          )}>
             {filteredNotes.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
                 onEdit={openEditModal}
-                onDelete={handleDeleteNote}
+                onDelete={requestDeleteNote} // Changed to requestDeleteNote
+                layout={layout}
               />
             ))}
           </div>
@@ -107,7 +149,6 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Floating Action Button to Add Note */}
       <Button
         onClick={openAddModal}
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90"
@@ -121,6 +162,11 @@ export default function HomePage() {
         onOpenChange={setIsModalOpen}
         onSubmit={(data, id) => (id ? handleEditNote(data, id) : handleAddNote(data))}
         initialData={editingNote}
+      />
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={confirmDeleteNote}
       />
     </div>
   );
