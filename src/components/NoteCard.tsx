@@ -17,11 +17,11 @@ export function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
   });
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full">
       <CardHeader>
         <CardTitle className="font-pixel text-2xl text-primary">{note.title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         <p className="text-muted-foreground text-sm mb-2">{formattedTimestamp}</p>
         <p className="whitespace-pre-wrap">{note.content}</p>
       </CardContent>
