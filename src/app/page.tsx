@@ -398,7 +398,7 @@ export default function HomePage() {
   }
 
   const FilterControls = () => (
-    <div className="p-4 space-y-6 bg-background/80 backdrop-blur-md rounded-lg shadow-lg">
+    <div className="p-4 space-y-6 bg-background/20 dark:bg-background/80 backdrop-blur-md rounded-lg shadow-lg">
       <div>
         <h3 className="text-sm font-medium text-muted-foreground mb-2">Status</h3>
         <div className="flex gap-2">
