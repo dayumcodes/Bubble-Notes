@@ -603,7 +603,11 @@ export default function HomePage() {
                     className="w-80 p-0 border-none shadow-2xl bg-transparent"
                     sideOffset={10}
                     onPointerDownOutside={(event) => {
-                        if (colorInputRecentlyClicked.current) {
+                        // Check if the click was on the color input or its children
+                        const target = event.target as HTMLElement;
+                        if (target.closest('#custom-bubble-bg')) {
+                             event.preventDefault();
+                        } else if (colorInputRecentlyClicked.current) {
                             event.preventDefault();
                             colorInputRecentlyClicked.current = false;
                         }
