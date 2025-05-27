@@ -3,9 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* The old body font-family declaration is removed. */
-/* New font properties will be applied in @layer base below. */
-
 @layer base {
   :root {
     --background: 0 0% 100%; /* White background */
@@ -109,6 +106,7 @@
     @apply border-border;
   }
   body {
+    font-family: var(--font-vt323);
     /* font-family is set via font-sans in layout.tsx, which now defaults to "Doto" via tailwind.config.ts */
     font-optical-sizing: auto;
     font-weight: 500; /* Sets default body font weight to medium */
