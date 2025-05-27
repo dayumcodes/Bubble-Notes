@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -13,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Filter, ListChecks, Trash2, Atom } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
-import { OrbitViewContainer } from "@/components/OrbitViewContainer";
 import { Separator } from "@/components/ui/separator";
 import type { HSLColor } from "@/lib/color-utils";
 import {
@@ -27,8 +25,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import React from "react";
+import { motion } from "framer-motion";
+import { HexColorPicker } from "react-colorful";
 
-type LayoutMode = 'bubble' | 'grid' | 'list' | 'orbit';
+type LayoutMode = 'bubble' | 'grid' | 'list';
 
 const THEME_DEFAULT_PALETTE_NAME = 'Theme Default';
 const CUSTOM_PALETTE_NAME = 'Custom';
@@ -56,8 +56,6 @@ const NOTES_KEY = 'pixel-notes';
 const LAYOUT_KEY = 'pixel-notes-layout';
 const PALETTE_NAME_KEY = 'pixel-notes-palette-name';
 const CUSTOM_PALETTE_CONFIG_KEY = 'pixel-notes-custom-palette-config';
-const CENTRAL_NOTE_ID_KEY = 'pixel-notes-central-note-id';
-
 
 const DEFAULT_CUSTOM_PALETTE: BubblePaletteConfig = {
   name: CUSTOM_PALETTE_NAME,
@@ -66,7 +64,6 @@ const DEFAULT_CUSTOM_PALETTE: BubblePaletteConfig = {
   glow1: '190 40% 70%',
   glow2: '210 60% 90%',
 };
-
 
 export default function HomePage() {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -87,8 +84,6 @@ export default function HomePage() {
   const [isFiltersPopoverOpen, setIsFiltersPopoverOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const colorInputRecentlyClicked = useRef(false);
-  const [centralNoteId, setCentralNoteId] = useState<string | null>(null);
-
 
   useEffect(() => {
     setIsMounted(true);
@@ -112,7 +107,7 @@ export default function HomePage() {
     setNotes(parsedNotes);
 
     const storedLayout = localStorage.getItem(LAYOUT_KEY) as LayoutMode | null;
-    if (storedLayout && ['bubble', 'grid', 'list', 'orbit'].includes(storedLayout)) {
+    if (storedLayout && ['bubble', 'grid', 'list'].includes(storedLayout)) {
       setLayout(storedLayout);
     } else {
       setLayout('bubble');
@@ -140,11 +135,6 @@ export default function HomePage() {
        setCustomBubblePalette(DEFAULT_CUSTOM_PALETTE);
     }
 
-    const storedCentralNoteId = localStorage.getItem(CENTRAL_NOTE_ID_KEY);
-    if (storedCentralNoteId) {
-        setCentralNoteId(storedCentralNoteId);
-    }
-
   }, []);
 
   useEffect(() => {
@@ -166,12 +156,6 @@ export default function HomePage() {
     if (!isMounted || selectedPaletteName !== CUSTOM_PALETTE_NAME) return;
     localStorage.setItem(CUSTOM_PALETTE_CONFIG_KEY, JSON.stringify(customBubblePalette));
   }, [customBubblePalette, selectedPaletteName, isMounted]);
-
-  useEffect(() => {
-    if (!isMounted || !centralNoteId) return;
-    localStorage.setItem(CENTRAL_NOTE_ID_KEY, centralNoteId);
-  }, [centralNoteId, isMounted]);
-
 
   const openAddModal = useCallback(() => {
     setEditingNote(null);
@@ -222,22 +206,6 @@ export default function HomePage() {
       })
   , [notes]);
 
-  // Effect to set initial central note for Orbit View
-  useEffect(() => {
-    if (layout === 'orbit' && isMounted && activeNotes.length > 0) {
-      const currentCentralIsValid = centralNoteId && activeNotes.some(n => n.id === centralNoteId);
-      if (!currentCentralIsValid) {
-        const pinnedActiveNotes = activeNotes.filter(n => n.isPinned);
-        if (pinnedActiveNotes.length > 0) {
-          setCentralNoteId(pinnedActiveNotes[0].id); // Most recent pinned active
-        } else {
-          setCentralNoteId(activeNotes[0].id); // Most recent active
-        }
-      }
-    }
-  }, [layout, isMounted, activeNotes, centralNoteId]);
-
-
   const handleAddNote = (noteData: Omit<Note, "id" | "timestamp" | "status">) => {
     const newNote: Note = {
       ...noteData,
@@ -265,10 +233,6 @@ export default function HomePage() {
         note.id === noteId ? { ...note, status: 'trashed', isPinned: false, timestamp: Date.now() } : note
       )
     );
-     // If the trashed note was the central note, clear it
-     if (centralNoteId === noteId) {
-        setCentralNoteId(null); // This will trigger logic to find a new central note
-    }
   };
 
   const handleRestoreFromTrash = (noteId: string) => {
@@ -287,10 +251,6 @@ export default function HomePage() {
 
   const handleDeletePermanently = (noteId: string) => {
     setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-     // If the deleted note was the central note, clear it
-     if (centralNoteId === noteId) {
-        setCentralNoteId(null);
-    }
   };
 
   const requestPermanentDelete = (noteId: string) => {
@@ -305,7 +265,6 @@ export default function HomePage() {
     setIsPermanentDeleteConfirmOpen(false);
     setNoteIdForPermanentDelete(null);
   };
-
 
   const openEditModal = (note: Note) => {
     setEditingNote(note);
@@ -331,10 +290,6 @@ export default function HomePage() {
   const clearTagFilter = () => {
     setActiveTagFilter(null);
   };
-
-  const handleSetCentralNote = useCallback((noteId: string) => {
-    setCentralNoteId(noteId);
-  }, []);
 
   const handleCustomBgColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newBgHex = event.target.value;
@@ -396,7 +351,6 @@ export default function HomePage() {
         return matchesSearch && matchesTagFilter;
       });
 
-
   let activePaletteConfigResolved: BubblePaletteConfig | undefined;
   if (selectedPaletteName === CUSTOM_PALETTE_NAME) {
     activePaletteConfigResolved = customBubblePalette;
@@ -430,7 +384,6 @@ export default function HomePage() {
       });
     return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
   }, [notes, showTrashedNotes]);
-
 
   if (!isMounted) {
     return (
@@ -471,7 +424,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {(layout === 'bubble' || layout === 'orbit') && !showTrashedNotes && (
+      {(layout === 'bubble') && !showTrashedNotes && (
         <>
           <Separator />
           <div>
@@ -495,14 +448,10 @@ export default function HomePage() {
                     onClick={() => setSelectedPaletteName(palette.name)}
                     className={cn(
                       "p-2 h-auto rounded-full w-10 h-10 modern-filter-button data-[state=active]:modern-filter-button-active data-[state=active]:ring-2 data-[state=active]:ring-offset-2 data-[state=active]:ring-primary",
-                       layout === 'orbit' && 'opacity-50 cursor-not-allowed', // Dim if in orbit view
-                      palette.name === THEME_DEFAULT_PALETTE_NAME && "flex flex-col items-center justify-center",
-                      palette.name === CUSTOM_PALETTE_NAME && "flex flex-col items-center justify-center"
+                      palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}
                     )}
-                    title={layout === 'orbit' ? `${palette.name} (Bubble View Only)` : palette.name}
+                    title={palette.name}
                     data-state={isActive ? 'active' : 'inactive'}
-                    style={palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}}
-                    disabled={layout === 'orbit'}
                   >
                     {palette.name === THEME_DEFAULT_PALETTE_NAME || palette.name === CUSTOM_PALETTE_NAME ? (
                         <span className="text-xs leading-tight text-center">
@@ -520,25 +469,34 @@ export default function HomePage() {
             </div>
             {selectedPaletteName === CUSTOM_PALETTE_NAME && (
               <div className={cn(
-                  "mt-3 flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/20 backdrop-blur-sm",
-                   layout === 'orbit' && 'opacity-50'
-                  )}>
+                  "mt-3 flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/20 backdrop-blur-sm")}>
                 <label htmlFor="custom-bubble-bg" className="text-xs text-muted-foreground">
                   Custom Background:
                 </label>
-                <input
-                  type="color"
-                  id="custom-bubble-bg"
-                  value={currentCustomBgHex}
-                  onChange={handleCustomBgColorChange}
-                  onMouseDown={() => {
-                    colorInputRecentlyClicked.current = true;
-                  }}
-                  className="w-20 h-8 p-0 border-none rounded cursor-pointer bg-transparent"
-                  title="Pick custom background color"
-                  disabled={layout === 'orbit'}
-                />
+                <div className="w-full flex flex-col items-center">
+                  <HexColorPicker
+                    color={currentCustomBgHex}
+                    onChange={color => handleCustomBgColorChange({ target: { value: color } } as any)}
+                    style={{ width: "100%", maxWidth: 220, marginBottom: 8 }}
+                  />
+                  <Input
+                    id="custom-bubble-bg"
+                    type="text"
+                    value={currentCustomBgHex}
+                    onChange={handleCustomBgColorChange}
+                    className="w-28 text-center mt-2"
+                    title="Hex color value"
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">Text & glow derived automatically.</p>
+                <Button
+                  className="mt-2"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsFiltersPopoverOpen(false)}
+                >
+                  Close
+                </Button>
               </div>
             )}
           </div>
@@ -571,7 +529,6 @@ export default function HomePage() {
     </div>
   );
 
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header layout={layout} />
@@ -597,18 +554,6 @@ export default function HomePage() {
             />
           </div>
           <div className="flex gap-2 items-center">
-             <Button
-                variant={layout === 'orbit' ? 'secondary' : 'outline'}
-                size="icon"
-                onClick={() => setLayout('orbit')}
-                aria-label="Orbit view"
-                title="Orbit View"
-                disabled={showTrashedNotes}
-                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
-                data-state={layout === 'orbit' ? 'active' : 'inactive'}
-            >
-                <Atom className="h-5 w-5" />
-            </Button>
             <Button
                 variant={layout === 'bubble' ? 'secondary' : 'outline'}
                 size="icon"
@@ -643,7 +588,9 @@ export default function HomePage() {
             >
                 <List className="h-5 w-5" />
             </Button>
-            <Popover open={isFiltersPopoverOpen} onOpenChange={setIsFiltersPopoverOpen}>
+            <Popover open={isFiltersPopoverOpen} onOpenChange={(open) => {
+              if (!colorInputRecentlyClicked.current) setIsFiltersPopoverOpen(open);
+            }}>
                 <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -659,18 +606,20 @@ export default function HomePage() {
                     sideOffset={10}
                     onPointerDownOutside={(event) => {
                         const target = event.target as HTMLElement;
-                        // Check if the click is on the color input itself or any element within its picker UI
                         if (target.closest('#custom-bubble-bg') || (target.nodeName === 'INPUT' && target.getAttribute('type') === 'color')) {
                              event.preventDefault();
-                        } else if (colorInputRecentlyClicked.current) {
-                            event.preventDefault();
+                             colorInputRecentlyClicked.current = true;
+                        } else {
                             colorInputRecentlyClicked.current = false;
                         }
                     }}
-                     onInteractOutside={(event) => { // Added for Radix specfic way to handle this for native elements like color picker
+                    onInteractOutside={(event) => {
                         const target = event.target as HTMLElement;
                         if (target.closest('#custom-bubble-bg')) {
                              event.preventDefault();
+                             colorInputRecentlyClicked.current = true;
+                        } else {
+                            colorInputRecentlyClicked.current = false;
                         }
                     }}
                 >
@@ -698,13 +647,6 @@ export default function HomePage() {
             onEditNote={openEditModal}
             dynamicStyle={bubbleViewDynamicStyles}
           />
-        ) : layout === 'orbit' && !showTrashedNotes && centralNoteId ? (
-          <OrbitViewContainer
-            allNotes={activeNotesForViews}
-            centralNoteId={centralNoteId}
-            onSetCentralNote={handleSetCentralNote}
-            onEditNote={openEditModal}
-          />
         ) : (
           filteredNotes.length > 0 ? (
             <div className={cn(
@@ -723,7 +665,6 @@ export default function HomePage() {
                   onMoveToTrash={handleMoveToTrash}
                   onRestoreFromTrash={handleRestoreFromTrash}
                   onDeletePermanently={requestPermanentDelete}
-                  orbitViewStyle={null} // Not applicable here
                 />
               ))}
             </div>
@@ -731,8 +672,7 @@ export default function HomePage() {
             <div className="text-center py-10 animate-fadeIn">
               <p className="text-xl text-muted-foreground">
                 {searchTerm || activeTagFilter ? "No notes match your filters." :
-                 showTrashedNotes ? "Your trash is empty." : 
-                 layout === 'orbit' && !centralNoteId ? "Select a note to be the center of the orbit or add some notes." :
+                 showTrashedNotes ? "Your trash is empty." :
                  "You have no active notes. Click '+' to add one!"}
               </p>
             </div>
@@ -741,14 +681,17 @@ export default function HomePage() {
       </main>
 
       {!showTrashedNotes && (
-        <Button
+        <motion.button
           onClick={openAddModal}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-14 h-14 p-0 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 transition-transform"
           aria-label="Add new note (Ctrl+N)"
           title="Add new note (Ctrl+N)"
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-16 h-16 flex items-center justify-center bg-gradient-to-br from-yellow-300 via-orange-400 to-pink-400 shadow-2xl shadow-yellow-200/40 dark:shadow-yellow-500/30 border-4 border-white/40 dark:border-black/40 text-white text-4xl hover:scale-110 active:scale-95 transition-transform focus:outline-none focus:ring-4 focus:ring-yellow-300/60 animate-pulseDot"
+          whileHover={{ scale: 1.12, boxShadow: "0 0 40px 10px #fbbf24aa" }}
+          whileTap={{ scale: 0.95 }}
+          type="button"
         >
-          <Plus className="h-7 w-7" />
-        </Button>
+          <Plus className="w-9 h-9" />
+        </motion.button>
       )}
 
       <NoteFormDialog

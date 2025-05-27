@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Note } from "@/types/note";
@@ -12,6 +11,7 @@ interface OrbitViewContainerProps {
   centralNoteId: string | null;
   onSetCentralNote: (noteId: string) => void;
   onEditNote: (note: Note) => void;
+  onAddNote: () => void;
 }
 
 const MAX_ORBITS = 2; // Adjusted to typically show 2 orbits as in the image
@@ -25,7 +25,7 @@ const NOTE_CARD_SIZE_CENTRAL = 192; // approx 12rem (w-48)
 const NOTE_CARD_SIZE_ORBITING = 128; // approx 8rem (w-32)
 
 
-export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, onEditNote }: OrbitViewContainerProps) {
+export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, onEditNote, onAddNote }: OrbitViewContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -62,40 +62,34 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
       note => note.id !== centralNote.id && note.status === 'active'
     );
 
-    const notesWithSharedTags: (Note & { sharedTagsCount: number })[] = otherActiveNotes
-      .map(note => {
-        const centralTags = centralNote.tags || [];
-        const noteTags = note.tags || [];
-        const sharedTags = noteTags.filter(tag => centralTags.includes(tag));
-        return { ...note, sharedTagsCount: sharedTags.length };
-      })
-      .filter(note => note.sharedTagsCount > 0) // Only orbit notes with shared tags
-      .sort((a, b) => b.sharedTagsCount - a.sharedTagsCount || b.timestamp - a.timestamp);
+    // Sort by pinned, then most recent
+    const sortedNotes = otherActiveNotes.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return b.timestamp - a.timestamp;
+    });
 
     const orbits: { level: number; radius: number; notes: Note[]; rotationDuration: number }[] = [];
-    let notesToDistribute = [...notesWithSharedTags];
-    
-    for (let i = 0; i < MAX_ORBITS && notesToDistribute.length > 0; i++) {
-        const radius = Math.min(
-            (ORBIT_RADIUS_BASE + i * ORBIT_RADIUS_INCREMENT),
-            (Math.min(containerSize.width, containerSize.height) / 2) - (NOTE_CARD_SIZE_ORBITING / 2) - 20 // Ensure orbits fit
-        );
-        
-        // More notes on outer orbits, but ensure it's not too crowded
-        const notesForThisOrbitCount = Math.min(notesToDistribute.length, NOTES_PER_ORBIT_BASE + i * 2);
-        const notesForThisOrbit = notesToDistribute.splice(0, notesForThisOrbitCount);
+    let notesToDistribute = [...sortedNotes];
 
-        if (notesForThisOrbit.length > 0) {
-             orbits.push({
-                level: i + 1,
-                radius: radius,
-                notes: notesForThisOrbit,
-                rotationDuration: ORBIT_ROTATION_SPEED_BASE + i * 20 
-            });
-        }
+    for (let i = 0; i < MAX_ORBITS && notesToDistribute.length > 0; i++) {
+      const radius = Math.min(
+        (ORBIT_RADIUS_BASE + i * ORBIT_RADIUS_INCREMENT),
+        (Math.min(containerSize.width, containerSize.height) / 2) - (NOTE_CARD_SIZE_ORBITING / 2) - 20 // Ensure orbits fit
+      );
+      // More notes on outer orbits, but ensure it's not too crowded
+      const notesForThisOrbitCount = Math.min(notesToDistribute.length, NOTES_PER_ORBIT_BASE + i * 2);
+      const notesForThisOrbit = notesToDistribute.splice(0, notesForThisOrbitCount);
+      if (notesForThisOrbit.length > 0) {
+        orbits.push({
+          level: i + 1,
+          radius: radius,
+          notes: notesForThisOrbit,
+          rotationDuration: ORBIT_ROTATION_SPEED_BASE + i * 20
+        });
+      }
     }
     return orbits;
-
   }, [centralNote, allNotes, containerSize]);
 
   if (!centralNote) {
@@ -120,13 +114,14 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="z-20" // Ensure central note is above orbits
+            className="z-20"
         >
           <NoteCard
             note={centralNote}
             onEdit={onEditNote}
             orbitViewStyle="central"
             layout="orbit" 
+            onTagClick={() => {}}
           />
         </motion.div>
       </AnimatePresence>
@@ -134,7 +129,7 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
       {orbitsData.map((orbit, orbitIndex) => (
         <motion.div
           key={`orbit-group-${orbit.level}`}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none" // Group for rotation, pointer-events-none for SVG
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{ 
             width: orbit.radius * 2, 
             height: orbit.radius * 2,
@@ -148,36 +143,49 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
             duration: orbit.rotationDuration * (orbitIndex % 2 === 0 ? 1 : -1) 
           }}
         >
-          <svg width="100%" height="100%" viewBox="0 0 100 100" className="absolute inset-0 opacity-70">
+          {/* Orbit Path */}
+          <svg width="100%" height="100%" viewBox="0 0 100 100" className="absolute inset-0 z-0">
             <circle 
                 cx="50" 
                 cy="50" 
-                r="49.5" // Adjusted for stroke width
-                className="orbit-path" 
+                r="49.5"
+                className="stroke-[2]" stroke="#4b6bfb" fill="none"
             />
+            {/* Radial lines from center to each note */}
+            {orbit.notes.map((_, noteIndex) => {
+              const angle = (noteIndex / orbit.notes.length) * 2 * Math.PI;
+              const x2 = 50 + 49.5 * Math.cos(angle);
+              const y2 = 50 + 49.5 * Math.sin(angle);
+              return (
+                <line
+                  key={noteIndex}
+                  x1="50" y1="50" x2={x2} y2={y2}
+                  stroke="#4b6bfb"
+                  strokeWidth="1"
+                  opacity="0.15"
+                />
+              );
+            })}
           </svg>
-          
+          {/* Orbiting Notes */}
           {orbit.notes.map((note, noteIndex) => {
             const angle = (noteIndex / orbit.notes.length) * 2 * Math.PI;
             const x = Math.cos(angle) * orbit.radius; 
             const y = Math.sin(angle) * orbit.radius;
-
             return (
               <motion.div
                 key={note.id}
                 layoutId={`note-${note.id}`} 
-                className="absolute z-10 pointer-events-auto" // Notes should be interactive
+                className="absolute z-10 pointer-events-auto"
                 style={{
                   left: `calc(50% + ${x}px)`, 
                   top: `calc(50% + ${y}px)`,
-                  // transform so center of note is at x,y. Size from CSS.
-                  // Example: if orbiting note is 128px, offset by -64px
                 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ 
-                    scale: 1, // CSS classes will handle final size
+                    scale: 1,
                     opacity: 1,
-                    rotate: -360 // Counter-rotate
+                    rotate: -360
                 }} 
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ 
@@ -197,12 +205,8 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
                   onClickOrbitingNote={onSetCentralNote}
                   orbitViewStyle="orbiting"
                   layout="orbit"
-                  // CSS classes will set width and height, so transform origin works.
-                  // e.g. for a 128px note, translateX(-64px) translateY(-64px)
-                  className={cn(
-                    orbit.notes.length === 1 ? "translate-x-[-50%] translate-y-[-50%]" : // Special case for single note for better centering
-                    `translate-x-[-${NOTE_CARD_SIZE_ORBITING/2}px] translate-y-[-${NOTE_CARD_SIZE_ORBITING/2}px]`
-                  )}
+                  className="bg-[#232946] text-white rounded-full flex flex-col items-center justify-center text-center w-32 h-32 font-sans text-base font-medium border border-[#4b6bfb] hover:bg-[#334e8c] transition-colors duration-200"
+                  onTagClick={() => {}}
                 />
               </motion.div>
             );
