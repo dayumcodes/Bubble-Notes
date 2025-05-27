@@ -1,4 +1,3 @@
-
 "use client";
 import React from "react";
 import type { Note } from "@/types/note";
@@ -24,6 +23,7 @@ interface NoteCardProps {
   onClickOrbitingNote?: (noteId: string) => void;
   className?: string; 
   style?: React.CSSProperties; 
+  customBgColor?: string; // HEX or CSS color for grid/list
 }
 
 const highlightText = (text: string | null | undefined, highlight: string | null | undefined) => {
@@ -64,7 +64,8 @@ export function NoteCard({
   orbitViewStyle = null,
   onClickOrbitingNote,
   className,
-  style
+  style,
+  customBgColor
 }: NoteCardProps) {
   const formattedTimestamp = new Date(note.timestamp).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -145,16 +146,21 @@ export function NoteCard({
   // Default rectangular card rendering for grid/list/bubble views
   return (
     <motion.div
-      layout 
+      layout
       className={cn(
         "relative group rounded-md flex flex-col border transition-all duration-300",
-        "bg-card/60 dark:bg-card/40 backdrop-blur-md border-border/30 shadow-lg hover:shadow-xl",
+        customBgColor && (layout === 'grid' || layout === 'list')
+          ? "backdrop-blur-md border-border/30 shadow-lg hover:shadow-xl"
+          : "bg-card/60 dark:bg-card/40 backdrop-blur-md border-border/30 shadow-lg hover:shadow-xl",
         layout === 'grid' ? "h-full" : "mb-4 w-full",
         note.isPinned && !isTrashed && "ring-2 ring-primary/70",
         isTrashed && "opacity-60 border-dashed border-muted-foreground/50",
         className
       )}
-      style={style}
+      style={{
+        ...(style || {}),
+        ...(customBgColor && (layout === 'grid' || layout === 'list') ? { backgroundColor: customBgColor } : {}),
+      }}
     >
       <div className="absolute top-2.5 right-2.5 flex gap-1 z-10">
         {isTrashed ? (

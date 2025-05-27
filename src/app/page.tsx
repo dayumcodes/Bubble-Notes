@@ -424,12 +424,12 @@ export default function HomePage() {
         </div>
       </div>
 
-      {(layout === 'bubble') && !showTrashedNotes && (
+      {(layout === 'bubble' || layout === 'grid' || layout === 'list') && !showTrashedNotes && (
         <>
           <Separator />
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Bubble Palette</h3>
-             <p className="text-xs text-muted-foreground mb-2">Applies to Bubble View only.</p>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Palette</h3>
+             <p className="text-xs text-muted-foreground mb-2">Applies to {layout.charAt(0).toUpperCase() + layout.slice(1)} View.</p>
             <div className="flex flex-wrap justify-center gap-2">
               {bubblePalettes.map((palette) => {
                 const isActive = selectedPaletteName === palette.name;
@@ -647,6 +647,48 @@ export default function HomePage() {
             onEditNote={openEditModal}
             dynamicStyle={bubbleViewDynamicStyles}
           />
+        ) : layout === 'grid' && !showTrashedNotes ? (
+          <div className={cn("gap-6 animate-fadeIn grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}
+            style={bubbleViewDynamicStyles}
+          >
+            {filteredNotes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                searchTerm={searchTerm}
+                onEdit={openEditModal}
+                onTogglePin={handleTogglePin}
+                onTagClick={handleTagClick}
+                layout={layout}
+                onMoveToTrash={handleMoveToTrash}
+                onRestoreFromTrash={handleRestoreFromTrash}
+                onDeletePermanently={requestPermanentDelete}
+                orbitViewStyle={null}
+                customBgColor={currentCustomBgHex}
+              />
+            ))}
+          </div>
+        ) : layout === 'list' && !showTrashedNotes ? (
+          <div className={cn("gap-6 animate-fadeIn flex flex-col")}
+            style={bubbleViewDynamicStyles}
+          >
+            {filteredNotes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                searchTerm={searchTerm}
+                onEdit={openEditModal}
+                onTogglePin={handleTogglePin}
+                onTagClick={handleTagClick}
+                layout={layout}
+                onMoveToTrash={handleMoveToTrash}
+                onRestoreFromTrash={handleRestoreFromTrash}
+                onDeletePermanently={requestPermanentDelete}
+                orbitViewStyle={null}
+                customBgColor={currentCustomBgHex}
+              />
+            ))}
+          </div>
         ) : (
           filteredNotes.length > 0 ? (
             <div className={cn(
