@@ -27,14 +27,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import React from "react";
 
-const initialNotesData: Note[] = [
-  { id: '1', title: 'Grocery List', content: 'Milk, Eggs, Bread, Pixelated Apples', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 2, tags: ['shopping', 'food'], isPinned: true, status: 'active' },
-  { id: '2', title: 'Meeting Ideas', content: 'Discuss project Omega, Review timeline, Assign pixel tasks', timestamp: Date.now() - 1000 * 60 * 60 * 5, tags: ['work', 'project omega'], isPinned: false, status: 'active' },
-  { id: '3', title: 'Game Dev Log', content: 'Fixed player jump bug. Added new level with retro theme.', timestamp: Date.now() - 1000 * 60 * 30, tags: ['devlog', 'gamedev'], isPinned: false, status: 'active' },
-  { id: '4', title: 'To-Do Today', content: '1. Finish styling app\n2. Test note CRUD\n3. Drink coffee', timestamp: Date.now(), tags: ['todo'], isPinned: true, status: 'active' },
-  { id: '5', title: 'Recipe for Pixel Pie', content: 'Ingredients: Digital flour, virtual sugar, 1 byte of spice.', timestamp: Date.now() - 1000 * 60 * 60 * 24 * 5, tags: ['food', 'recipe'], isPinned: false, status: 'active' },
-];
-
 type LayoutMode = 'bubble' | 'grid' | 'list';
 
 const THEME_DEFAULT_PALETTE_NAME = 'Theme Default';
@@ -97,7 +89,7 @@ export default function HomePage() {
   useEffect(() => {
     setIsMounted(true);
     const storedNotes = localStorage.getItem(NOTES_KEY);
-    let parsedNotes: Note[] = initialNotesData.map(n => ({...n, isPinned: n.isPinned || false, tags: n.tags || [], status: n.status || 'active'}));
+    let parsedNotes: Note[] = []; // Initialize with an empty array
     if (storedNotes) {
       try {
         const tempParsedNotes: Note[] = JSON.parse(storedNotes).map((n: any) => ({
@@ -111,6 +103,7 @@ export default function HomePage() {
         }
       } catch (error) {
         console.error("Failed to parse notes from localStorage:", error);
+        // If parsing fails, parsedNotes remains empty, leading to a blank screen.
       }
     }
     setNotes(parsedNotes);
@@ -148,9 +141,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isMounted) return;
-    if (notes.length > 0 || localStorage.getItem(NOTES_KEY)) {
-      localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
-    }
+    // Save notes to localStorage. This also handles saving an empty array if all notes are deleted.
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   }, [notes, isMounted]);
 
   useEffect(() => {
@@ -603,7 +595,6 @@ export default function HomePage() {
                     className="w-80 p-0 border-none shadow-2xl bg-transparent"
                     sideOffset={10}
                     onPointerDownOutside={(event) => {
-                        // Check if the click was on the color input or its children
                         const target = event.target as HTMLElement;
                         if (target.closest('#custom-bubble-bg')) {
                              event.preventDefault();
@@ -724,3 +715,4 @@ const highlightText = (text: string | null | undefined, highlight: string | null
     
 
     
+
