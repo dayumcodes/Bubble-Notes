@@ -14,11 +14,16 @@ interface OrbitViewContainerProps {
   onEditNote: (note: Note) => void;
 }
 
-const MAX_ORBITS = 3;
-const NOTES_PER_ORBIT_BASE = 6; // Max notes for the closest orbit
-const ORBIT_RADIUS_BASE = 150; // Radius for the closest orbit in pixels
-const ORBIT_RADIUS_INCREMENT = 80; // Increase in radius for subsequent orbits
-const ORBIT_ROTATION_SPEED_BASE = 60; // Duration in seconds for a full rotation of the closest orbit
+const MAX_ORBITS = 2; // Adjusted to typically show 2 orbits as in the image
+const NOTES_PER_ORBIT_BASE = 4; 
+const ORBIT_RADIUS_BASE = 180; 
+const ORBIT_RADIUS_INCREMENT = 100; 
+const ORBIT_ROTATION_SPEED_BASE = 80; 
+
+// Approximate sizes for calculations - actual size set by CSS
+const NOTE_CARD_SIZE_CENTRAL = 192; // approx 12rem (w-48)
+const NOTE_CARD_SIZE_ORBITING = 128; // approx 8rem (w-32)
+
 
 export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, onEditNote }: OrbitViewContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,8 +39,16 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
       }
     };
     updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    return () => {
+      if (containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+      window.removeEventListener("resize", updateSize); // Keep this if you still use window resize
+    }
   }, []);
 
   const centralNote = useMemo(() => {
@@ -51,146 +64,128 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
 
     const notesWithSharedTags: (Note & { sharedTagsCount: number })[] = otherActiveNotes
       .map(note => {
-        const sharedTags = note.tags?.filter(tag => centralNote.tags?.includes(tag)) || [];
+        const centralTags = centralNote.tags || [];
+        const noteTags = note.tags || [];
+        const sharedTags = noteTags.filter(tag => centralTags.includes(tag));
         return { ...note, sharedTagsCount: sharedTags.length };
       })
-      .filter(note => note.sharedTagsCount > 0)
-      .sort((a, b) => b.sharedTagsCount - a.sharedTagsCount || b.timestamp - a.timestamp); // Prioritize by shared tags, then by recency
+      .filter(note => note.sharedTagsCount > 0) // Only orbit notes with shared tags
+      .sort((a, b) => b.sharedTagsCount - a.sharedTagsCount || b.timestamp - a.timestamp);
 
     const orbits: { level: number; radius: number; notes: Note[]; rotationDuration: number }[] = [];
-    let remainingNotes = [...notesWithSharedTags];
+    let notesToDistribute = [...notesWithSharedTags];
     
-    // Group by shared tag count (descending)
-    const relevanceGroups: Note[][] = [];
-    const maxShared = Math.max(...remainingNotes.map(n => n.sharedTagsCount), 0);
+    for (let i = 0; i < MAX_ORBITS && notesToDistribute.length > 0; i++) {
+        const radius = Math.min(
+            (ORBIT_RADIUS_BASE + i * ORBIT_RADIUS_INCREMENT),
+            (Math.min(containerSize.width, containerSize.height) / 2) - (NOTE_CARD_SIZE_ORBITING / 2) - 20 // Ensure orbits fit
+        );
+        
+        // More notes on outer orbits, but ensure it's not too crowded
+        const notesForThisOrbitCount = Math.min(notesToDistribute.length, NOTES_PER_ORBIT_BASE + i * 2);
+        const notesForThisOrbit = notesToDistribute.splice(0, notesForThisOrbitCount);
 
-    for (let i = maxShared; i > 0 && orbits.length < MAX_ORBITS; i--) {
-        const group = remainingNotes.filter(n => n.sharedTagsCount === i);
-        if (group.length > 0) {
-            relevanceGroups.push(group);
+        if (notesForThisOrbit.length > 0) {
+             orbits.push({
+                level: i + 1,
+                radius: radius,
+                notes: notesForThisOrbit,
+                rotationDuration: ORBIT_ROTATION_SPEED_BASE + i * 20 
+            });
         }
     }
-    
-    // If not enough groups by shared tags, fill with remaining notes by recency (if any left)
-    // This part is simplified for now. A more complex relevance might be needed.
-    // For now, we only orbit notes with shared tags.
-
-    relevanceGroups.slice(0, MAX_ORBITS).forEach((group, index) => {
-        const radius = Math.min(
-            (ORBIT_RADIUS_BASE + index * ORBIT_RADIUS_INCREMENT),
-            (Math.min(containerSize.width, containerSize.height) / 2) - (isCentralOrbit ? 100 : 60) // Ensure orbits fit
-        );
-        const notesForThisOrbit = group.slice(0, NOTES_PER_ORBIT_BASE + index * 2); // More notes on outer orbits
-        
-        orbits.push({
-            level: index + 1,
-            radius: radius,
-            notes: notesForThisOrbit,
-            rotationDuration: ORBIT_ROTATION_SPEED_BASE + index * 15 // Outer orbits rotate slower
-        });
-    });
-
     return orbits;
 
   }, [centralNote, allNotes, containerSize]);
 
   if (!centralNote) {
+    // This message is shown if centralNoteId is invalid or no active notes exist
     return (
-      <div ref={containerRef} className="relative flex-grow w-full h-full min-h-[calc(100vh-15rem)] p-4 bg-slate-900 dark:bg-gray-950 flex items-center justify-center text-slate-400">
-        Loading central note or no active notes available...
+      <div ref={containerRef} className="relative flex-grow w-full h-full min-h-[calc(100vh-15rem)] p-4 bg-[hsl(var(--orbit-background-light))] dark:bg-[hsl(var(--orbit-background-dark))] flex items-center justify-center text-foreground/70">
+        Select a note to be the center of the orbit or add notes with shared tags.
       </div>
     );
   }
   
-  const isCentralOrbit = true; // Just a flag for potential future use within NoteCard if needed
-
   return (
     <div 
       ref={containerRef}
-      className="relative flex-grow w-full h-full min-h-[calc(100vh-15rem)] p-4 bg-slate-900 dark:bg-gray-950 overflow-hidden flex items-center justify-center"
+      className="relative flex-grow w-full h-full min-h-[calc(100vh-15rem)] p-4 bg-[hsl(var(--orbit-background-light))] dark:bg-[hsl(var(--orbit-background-dark))] overflow-hidden flex items-center justify-center"
     >
       <AnimatePresence>
-        {/* Central Note */}
         <motion.div
-            key={centralNote.id} // Key change triggers animation
-            layoutId={`note-${centralNote.id}`} // For smooth transition if it was an orbiting note
+            key={`central-${centralNote.id}`}
+            layoutId={`note-${centralNote.id}`} 
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="z-20"
+            className="z-20" // Ensure central note is above orbits
         >
           <NoteCard
             note={centralNote}
             onEdit={onEditNote}
             orbitViewStyle="central"
-            layout="orbit" // Pass layout to NoteCard
+            layout="orbit" 
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* Orbit Paths and Orbiting Notes */}
       {orbitsData.map((orbit, orbitIndex) => (
         <motion.div
-          key={`orbit-path-${orbit.level}`}
-          className="absolute inset-0 flex items-center justify-center"
+          key={`orbit-group-${orbit.level}`}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none" // Group for rotation, pointer-events-none for SVG
           style={{ 
             width: orbit.radius * 2, 
             height: orbit.radius * 2,
-            top: `calc(50% - ${orbit.radius}px)`, // Center the orbit container
+            top: `calc(50% - ${orbit.radius}px)`, 
             left: `calc(50% - ${orbit.radius}px)`,
           }}
           animate={{ rotate: 360 }}
           transition={{ 
-            loop: Infinity, 
+            repeat: Infinity, 
             ease: "linear", 
-            duration: orbit.rotationDuration * (orbitIndex % 2 === 0 ? 1 : -1) // Alternate rotation direction
+            duration: orbit.rotationDuration * (orbitIndex % 2 === 0 ? 1 : -1) 
           }}
         >
-          {/* SVG Orbit Path */}
-          <svg width="100%" height="100%" viewBox="0 0 100 100" className="absolute inset-0 pointer-events-none">
+          <svg width="100%" height="100%" viewBox="0 0 100 100" className="absolute inset-0 opacity-70">
             <circle 
                 cx="50" 
                 cy="50" 
-                r="49"  // radius within the 100x100 viewBox, slightly less than 50 to keep stroke inside
+                r="49.5" // Adjusted for stroke width
                 className="orbit-path" 
             />
           </svg>
           
-          {/* Notes on this orbit */}
           {orbit.notes.map((note, noteIndex) => {
             const angle = (noteIndex / orbit.notes.length) * 2 * Math.PI;
-            // Position notes on the circumference of the *parent* rotating div
             const x = Math.cos(angle) * orbit.radius; 
             const y = Math.sin(angle) * orbit.radius;
 
             return (
               <motion.div
                 key={note.id}
-                layoutId={`note-${note.id}`} // For smooth transition when it becomes central
-                className="absolute z-10" // Ensure notes are above paths
+                layoutId={`note-${note.id}`} 
+                className="absolute z-10 pointer-events-auto" // Notes should be interactive
                 style={{
-                  // Position relative to the center of the rotating orbit div
-                  // The note card itself is 32x32 or 36x36, its origin is top-left.
-                  // width/height of orbiting note is approx 128px (w-32) or 144px (w-36)
-                  // The note card's transform-origin should be center for rotation
-                  left: `calc(50% + ${x}px - ${128/2}px)`, // Assuming w-32 (128px) for orbiting notes
-                  top: `calc(50% + ${y}px - ${128/2}px)`,
+                  left: `calc(50% + ${x}px)`, 
+                  top: `calc(50% + ${y}px)`,
+                  // transform so center of note is at x,y. Size from CSS.
+                  // Example: if orbiting note is 128px, offset by -64px
                 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ 
-                    scale: 0.8 - orbit.level * 0.1, // Smaller for further orbits
-                    opacity: 0.9 - orbit.level * 0.1, // Dimmer for further orbits
-                    rotate: -360 // Counter-rotate to keep note upright
+                    scale: 1, // CSS classes will handle final size
+                    opacity: 1,
+                    rotate: -360 // Counter-rotate
                 }} 
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ 
                     type: "spring", 
                     stiffness: 100, 
                     damping: 15,
-                    // For counter-rotation to match parent's rotation
                     rotate: { 
-                        loop: Infinity, 
+                        repeat: Infinity, 
                         ease: "linear", 
                         duration: orbit.rotationDuration * (orbitIndex % 2 === 0 ? 1 : -1) 
                     }
@@ -198,10 +193,16 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
               >
                 <NoteCard
                   note={note}
-                  onEdit={onEditNote} // Not directly used, click sets as central
+                  onEdit={onEditNote} 
                   onClickOrbitingNote={onSetCentralNote}
                   orbitViewStyle="orbiting"
-                  layout="orbit" // Pass layout to NoteCard
+                  layout="orbit"
+                  // CSS classes will set width and height, so transform origin works.
+                  // e.g. for a 128px note, translateX(-64px) translateY(-64px)
+                  className={cn(
+                    orbit.notes.length === 1 ? "translate-x-[-50%] translate-y-[-50%]" : // Special case for single note for better centering
+                    `translate-x-[-${NOTE_CARD_SIZE_ORBITING/2}px] translate-y-[-${NOTE_CARD_SIZE_ORBITING/2}px]`
+                  )}
                 />
               </motion.div>
             );
@@ -211,3 +212,4 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
     </div>
   );
 }
+

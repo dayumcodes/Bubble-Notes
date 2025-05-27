@@ -52,11 +52,15 @@
     --user-bubble-glow1: var(--bubble-glow-light);
     --user-bubble-glow2: var(--bubble-glow-dark);
 
-    /* Orbit View Specific */
-    --orbit-path-color: 220 13% 80%; /* Light gray for orbit paths in light mode */
-    --orbit-central-glow: 0 84.2% 60.2%; /* Destructive color for central note glow in light mode */
-    --orbit-orbiting-glow: 195 60% 75%; /* Primary color for orbiting note glow in light mode */
-    --orbit-text-color: 231 48% 18%; /* Dark blue for text in light mode orbit view */
+    /* Orbit View Specific - Light Mode (derived from dark mode for consistency, but adapted) */
+    --orbit-background-light: 220 20% 95%; /* Very light gray for light mode orbit background */
+    --orbit-path-color-light: 210 50% 75%; /* Lighter blue for paths */
+    --orbit-central-bg-light: 38 100% 85%; /* Light Orange/Yellow */
+    --orbit-central-text-light: 20 100% 20%; /* Dark brown for text */
+    --orbit-central-glow-light: 40 100% 70%; /* Brighter Yellow glow */
+    --orbit-orbiting-bg-light: 220 40% 88%; /* Light Blue/Purple */
+    --orbit-orbiting-text-light: 230 30% 30%; /* Darker blue text */
+    --orbit-orbiting-glow-light: 230 60% 80%; /* Soft blue glow */
   }
   .dark {
     --background: 231 20% 12%; /* Dark blue-gray */
@@ -105,11 +109,15 @@
     --user-bubble-glow1: var(--bubble-glow-light);
     --user-bubble-glow2: var(--bubble-glow-dark);
 
-     /* Orbit View Specific */
-    --orbit-path-color: 231 20% 35%; /* Darker gray for orbit paths in dark mode */
-    --orbit-central-glow: 0 70% 55%; /* Brighter red for central note glow in dark mode */
-    --orbit-orbiting-glow: 231 48% 65%; /* Brighter primary for orbiting note glow in dark mode */
-    --orbit-text-color: 0 0% 90%; /* Light gray for text in dark mode orbit view */
+     /* Orbit View Specific - Dark Mode (to match image) */
+    --orbit-background-dark: 230 15% 8%; /* Very dark blue, almost black */
+    --orbit-path-color-dark: 200 70% 60%; /* Light Blue for paths */
+    --orbit-central-bg-dark: 38 100% 50%; /* Orange/Yellow */
+    --orbit-central-text-dark: 0 0% 100%; /* White text */
+    --orbit-central-glow-dark: 45 100% 55%; /* Brighter Orange/Yellow glow */
+    --orbit-orbiting-bg-dark: 240 40% 20%; /* Dark Blue/Purple */
+    --orbit-orbiting-text-dark: 220 30% 85%; /* Light Grey/Blue text */
+    --orbit-orbiting-glow-dark: 250 50% 45%; /* Subtle Purple/Blue glow */
   }
 }
 
@@ -199,7 +207,7 @@
   @apply transition-all duration-200 ease-out transform active:scale-95;
   @apply shadow-md hover:shadow-lg rounded-md border border-transparent;
   /* Light mode default: */
-  @apply bg-background/50 backdrop-blur-sm hover:bg-accent/30; /* Adjusted hover from /20 to /30 */
+  @apply bg-background/50 backdrop-blur-sm hover:bg-accent/40; /* Adjusted hover from /30 to /40 */
 }
 :is(.dark) .modern-filter-button { /* Dark mode override */
    @apply bg-background/20 hover:bg-accent/30;
@@ -243,34 +251,44 @@
   animation: pulseDotAnimation 1.4s infinite ease-in-out;
 }
 
-/* Orbit View Specific Styles */
+/* Orbit View Specific Styles - Updated to match image */
 .orbit-path {
-  stroke: hsl(var(--orbit-path-color));
-  stroke-width: 1.5px;
-  stroke-dasharray: 4 4;
+  stroke: hsl(var(--orbit-path-color-light)); /* Default to light mode path color */
+  stroke-width: 1px;
   fill: none;
-  opacity: 0.6;
-  filter: drop-shadow(0 0 3px hsl(var(--orbit-path-color) / 0.5));
+  filter: drop-shadow(0 0 2px hsl(var(--orbit-path-color-light) / 0.6));
+}
+.dark .orbit-path {
+  stroke: hsl(var(--orbit-path-color-dark));
+  filter: drop-shadow(0 0 2px hsl(var(--orbit-path-color-dark) / 0.6));
 }
 
 .orbit-note-central {
-  border-color: hsl(var(--orbit-central-glow) / 0.8);
-  box-shadow: 0 0 12px 3px hsl(var(--orbit-central-glow) / 0.6), 0 0 20px 5px hsl(var(--orbit-central-glow) / 0.4);
-  color: hsl(var(--orbit-text-color));
-  background-color: hsl(var(--card) / 0.7); /* Semi-transparent card background */
+  @apply rounded-full flex flex-col items-center justify-center text-center;
+  width: 12rem; /* 192px */
+  height: 12rem; /* 192px */
+  background-color: hsl(var(--orbit-central-bg-light));
+  color: hsl(var(--orbit-central-text-light));
+  box-shadow: 0 0 25px 8px hsl(var(--orbit-central-glow-light) / 0.7);
 }
 .dark .orbit-note-central {
-   background-color: hsl(var(--card) / 0.5);
+  background-color: hsl(var(--orbit-central-bg-dark));
+  color: hsl(var(--orbit-central-text-dark));
+  box-shadow: 0 0 25px 8px hsl(var(--orbit-central-glow-dark) / 0.7);
 }
-
-
 .orbit-note-orbiting {
-  border-color: hsl(var(--orbit-orbiting-glow) / 0.7);
-  box-shadow: 0 0 8px 2px hsl(var(--orbit-orbiting-glow) / 0.5), 0 0 15px 3px hsl(var(--orbit-orbiting-glow) / 0.3);
-  color: hsl(var(--orbit-text-color));
-  background-color: hsl(var(--card) / 0.7); /* Semi-transparent card background */
+  @apply rounded-full flex flex-col items-center justify-center text-center;
+  width: 8rem; /* 128px */
+  height: 8rem; /* 128px */
+  background-color: hsl(var(--orbit-orbiting-bg-light));
+  color: hsl(var(--orbit-orbiting-text-light));
+  box-shadow: 0 0 15px 4px hsl(var(--orbit-orbiting-glow-light) / 0.6);
+  @apply p-2 overflow-hidden;
 }
 .dark .orbit-note-orbiting {
-   background-color: hsl(var(--card) / 0.5);
+  background-color: hsl(var(--orbit-orbiting-bg-dark));
+  color: hsl(var(--orbit-orbiting-text-dark));
+  box-shadow: 0 0 15px 4px hsl(var(--orbit-orbiting-glow-dark) / 0.6);
 }
     
+
