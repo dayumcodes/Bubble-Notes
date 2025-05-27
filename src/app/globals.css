@@ -51,6 +51,12 @@
     --user-bubble-text: var(--primary-foreground);
     --user-bubble-glow1: var(--bubble-glow-light);
     --user-bubble-glow2: var(--bubble-glow-dark);
+
+    /* Orbit View Specific */
+    --orbit-path-color: 220 13% 80%; /* Light gray for orbit paths in light mode */
+    --orbit-central-glow: 0 84.2% 60.2%; /* Destructive color for central note glow in light mode */
+    --orbit-orbiting-glow: 195 60% 75%; /* Primary color for orbiting note glow in light mode */
+    --orbit-text-color: 231 48% 18%; /* Dark blue for text in light mode orbit view */
   }
   .dark {
     --background: 231 20% 12%; /* Dark blue-gray */
@@ -98,6 +104,12 @@
     --user-bubble-text: var(--primary-foreground);
     --user-bubble-glow1: var(--bubble-glow-light);
     --user-bubble-glow2: var(--bubble-glow-dark);
+
+     /* Orbit View Specific */
+    --orbit-path-color: 231 20% 35%; /* Darker gray for orbit paths in dark mode */
+    --orbit-central-glow: 0 70% 55%; /* Brighter red for central note glow in dark mode */
+    --orbit-orbiting-glow: 231 48% 65%; /* Brighter primary for orbiting note glow in dark mode */
+    --orbit-text-color: 0 0% 90%; /* Light gray for text in dark mode orbit view */
   }
 }
 
@@ -229,5 +241,36 @@
 
 .animate-pulseDot {
   animation: pulseDotAnimation 1.4s infinite ease-in-out;
+}
+
+/* Orbit View Specific Styles */
+.orbit-path {
+  stroke: hsl(var(--orbit-path-color));
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 4;
+  fill: none;
+  opacity: 0.6;
+  filter: drop-shadow(0 0 3px hsl(var(--orbit-path-color) / 0.5));
+}
+
+.orbit-note-central {
+  border-color: hsl(var(--orbit-central-glow) / 0.8);
+  box-shadow: 0 0 12px 3px hsl(var(--orbit-central-glow) / 0.6), 0 0 20px 5px hsl(var(--orbit-central-glow) / 0.4);
+  color: hsl(var(--orbit-text-color));
+  background-color: hsl(var(--card) / 0.7); /* Semi-transparent card background */
+}
+.dark .orbit-note-central {
+   background-color: hsl(var(--card) / 0.5);
+}
+
+
+.orbit-note-orbiting {
+  border-color: hsl(var(--orbit-orbiting-glow) / 0.7);
+  box-shadow: 0 0 8px 2px hsl(var(--orbit-orbiting-glow) / 0.5), 0 0 15px 3px hsl(var(--orbit-orbiting-glow) / 0.3);
+  color: hsl(var(--orbit-text-color));
+  background-color: hsl(var(--card) / 0.7); /* Semi-transparent card background */
+}
+.dark .orbit-note-orbiting {
+   background-color: hsl(var(--card) / 0.5);
 }
     
