@@ -113,7 +113,7 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            transition={{ type: "spring", stiffness: 260, damping: 25 }} // Adjusted damping
             className="z-20"
         >
           <NoteCard
@@ -148,21 +148,25 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
             <circle 
                 cx="50" 
                 cy="50" 
-                r="49.5"
-                className="stroke-[2]" stroke="#4b6bfb" fill="none"
+                r="49.5" // Keep radius relative to viewBox
+                className="stroke-[1.5]" // Use Tailwind for stroke width if preferred, or direct attribute
+                stroke="hsl(var(--border) / 0.5)" // Theme-aware color
+                fill="none"
+                strokeDasharray="4 8" // Dashed line effect
             />
             {/* Radial lines from center to each note */}
             {orbit.notes.map((_, noteIndex) => {
               const angle = (noteIndex / orbit.notes.length) * 2 * Math.PI;
-              const x2 = 50 + 49.5 * Math.cos(angle);
-              const y2 = 50 + 49.5 * Math.sin(angle);
+              const x2 = 50 + 49.5 * Math.cos(angle); // End point on the circle
+              const y2 = 50 + 49.5 * Math.sin(angle); // End point on the circle
               return (
                 <line
                   key={noteIndex}
                   x1="50" y1="50" x2={x2} y2={y2}
-                  stroke="#4b6bfb"
-                  strokeWidth="1"
-                  opacity="0.15"
+                  stroke="hsl(var(--border) / 0.3)" // Theme-aware, more muted
+                  strokeWidth="0.5" // Thinner lines
+                  opacity="0.1" // Further reduced opacity
+                  // strokeDasharray="2 4" // Optional: dashing for radial lines too
                 />
               );
             })}
@@ -203,9 +207,9 @@ export function OrbitViewContainer({ allNotes, centralNoteId, onSetCentralNote, 
                   note={note}
                   onEdit={onEditNote} 
                   onClickOrbitingNote={onSetCentralNote}
-                  orbitViewStyle="orbiting"
+                  orbitViewStyle={orbit.level === 1 ? 'orbiting-level-1' : 'orbiting-level-2'}
                   layout="orbit"
-                  className="bg-[#232946] text-white rounded-full flex flex-col items-center justify-center text-center w-32 h-32 font-sans text-base font-medium border border-[#4b6bfb] hover:bg-[#334e8c] transition-colors duration-200"
+                  // className is now handled within NoteCard based on orbitViewStyle
                   onTagClick={() => {}}
                 />
               </motion.div>

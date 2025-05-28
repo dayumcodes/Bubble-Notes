@@ -19,7 +19,7 @@ interface NoteCardProps {
   onMoveToTrash?: (noteId: string) => void;
   onRestoreFromTrash?: (noteId: string) => void;
   onDeletePermanently?: (noteId: string) => void;
-  orbitViewStyle?: 'central' | 'orbiting' | null;
+  orbitViewStyle?: 'central' | 'orbiting-level-1' | 'orbiting-level-2' | null;
   onClickOrbitingNote?: (noteId: string) => void;
   className?: string; 
   style?: React.CSSProperties; 
@@ -73,58 +73,85 @@ export function NoteCard({
 
   const isTrashed = note.status === 'trashed';
   const shouldHighlight = searchTerm && !isTrashed && layout !== 'orbit';
-  const isOrbiting = orbitViewStyle === 'orbiting';
+  
   const isCentralOrbit = orbitViewStyle === 'central';
-
+  const isOrbitingLevel1 = orbitViewStyle === 'orbiting-level-1';
+  const isOrbitingLevel2 = orbitViewStyle === 'orbiting-level-2';
+  const isAnyOrbiting = isOrbitingLevel1 || isOrbitingLevel2;
 
   if (orbitViewStyle) {
-    const noteTitle = isCentralOrbit ? note.title : (note.title.substring(0, 20) + (note.title.length > 20 ? "..." : ""));
-    
+    let noteTitle = note.title;
+    if (isOrbitingLevel1) {
+      noteTitle = note.title.substring(0, 20) + (note.title.length > 20 ? "..." : "");
+    } else if (isOrbitingLevel2) {
+      noteTitle = note.title.substring(0, 15) + (note.title.length > 15 ? "..." : "");
+    }
+
     const contentLines = note.content?.split('\n').slice(0, 3) || [];
-    const displayContent = contentLines.map((line, index) => (
+    const displayContentL1 = contentLines.map((line, index) => (
         <p key={index} className="truncate leading-tight">
             {line.startsWith('- ') || line.startsWith('• ') ? line.substring(0,25) : `• ${line.substring(0,23)}`}
             {line.length > (line.startsWith('- ') || line.startsWith('• ') ? 25 : 23) ? "..." : ""}
         </p>
     ));
-
+    // For L2, maybe a single line or very short summary if desired, for now, none.
 
     const cardElement = (
        <motion.div
         layoutId={`note-${note.id}`}
         className={cn(
-          "relative flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300",
-          isCentralOrbit ? "orbit-note-central" : "orbit-note-orbiting",
+          "relative flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 orbit-note-orbiting-base", // Added base class
+          {
+            "orbit-note-central shadow-xl": isCentralOrbit, // Styles for central note are largely in globals.css
+            // L1 and L2 styles now primarily use CSS variables for colors
+            "text-[hsl(var(--orbit-level-text))] rounded-full w-32 h-32 border border-[hsl(var(--orbit-level-border))] hover:bg-[hsl(var(--orbit-level-hover-bg))] opacity-90 shadow-lg": isOrbitingLevel1,
+            "text-[hsl(var(--orbit-level-text))] rounded-full w-24 h-24 text-xs border border-[hsl(var(--orbit-level-border)_/_0.7)] hover:bg-[hsl(var(--orbit-level-hover-bg)_/_0.9)] opacity-75 shadow-lg": isOrbitingLevel2,
+          },
+          (isOrbitingLevel1 || isOrbitingLevel2) && "bg-[hsl(var(--orbit-level-bg))]", // Common background for L1 and L2
           className
         )}
         style={style} // For positioning from OrbitViewContainer
-        onClick={isOrbiting && onClickOrbitingNote ? () => onClickOrbitingNote(note.id) : (isCentralOrbit ? () => onEdit(note) : undefined)}
-        whileHover={isOrbiting || isCentralOrbit ? { scale: 1.05, zIndex: 10 } : {}}
-        whileTap={isOrbiting || isCentralOrbit ? { scale: 0.95 } : {}}
+        onClick={isAnyOrbiting && onClickOrbitingNote ? () => onClickOrbitingNote(note.id) : (isCentralOrbit ? () => onEdit(note) : undefined)}
+        whileHover={isAnyOrbiting || isCentralOrbit ? { scale: 1.05, zIndex: 10 } : {}} // Keep existing hover effect
+        whileTap={isAnyOrbiting || isCentralOrbit ? { scale: 0.95 } : {}} // Keep existing tap effect
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
             if (e.key === 'Enter') {
-                if (isOrbiting && onClickOrbitingNote) onClickOrbitingNote(note.id);
+                if (isAnyOrbiting && onClickOrbitingNote) onClickOrbitingNote(note.id);
                 else if (isCentralOrbit) onEdit(note);
             }
         }}
         >
         <h3 className={cn(
             "font-pixel break-words",
-            isCentralOrbit ? "text-2xl px-2" : "text-lg px-1" 
+            {
+              "text-2xl px-2": isCentralOrbit,
+              "text-lg px-1": isOrbitingLevel1,
+              "text-sm px-1": isOrbitingLevel2,
+            }
         )}>
             {noteTitle}
         </h3>
-        {isOrbiting && note.content && (
-            <div className="font-sans text-xs mt-1.5 space-y-0.5 px-2 w-full">
-             {displayContent}
+        {/* Content for Central Note */}
+        {isCentralOrbit && note.content && (
+             <div className="font-sans text-xs mt-1.5 space-y-0.5 px-2 w-full">
+                {/* Using similar content display logic as before for central, but can be adjusted */}
+                {note.content.split('\n').slice(0,3).map((line, idx) => <p key={idx} className="truncate">{line}</p>)}
             </div>
         )}
+        {/* Content for Orbiting Level 1 */}
+        {isOrbitingLevel1 && note.content && (
+            <div className="font-sans text-xs mt-1.5 space-y-0.5 px-2 w-full">
+             {displayContentL1}
+            </div>
+        )}
+        {/* No content for Orbiting Level 2 by default, or very minimal if desired */}
         </motion.div>
     );
     
-    if (isOrbiting) {
+    // Tooltip for any orbiting note
+    if (isAnyOrbiting) {
         return (
           <TooltipProvider delayDuration={200}>
             <Tooltip>
@@ -132,15 +159,15 @@ export function NoteCard({
                 {cardElement}
               </TooltipTrigger>
               <TooltipContent side="top" align="center" className="bg-popover/90 backdrop-blur-sm text-popover-foreground">
-                <p className="font-pixel text-sm">{note.title}</p>
-                {note.content && <p className="text-xs max-w-[200px] whitespace-pre-line">{note.content.substring(0,100)}...</p>}
+                <p className="font-pixel text-sm">{note.title}</p> {/* Full title */}
+                {note.content && <p className="text-xs max-w-[200px] whitespace-pre-line">{note.content.substring(0,150)}...</p>} {/* Content snippet */}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         );
       }
+      // Central note does not need a tooltip in this context, as it's fully visible and interactive
       return cardElement;
-
   }
 
   // Default rectangular card rendering for grid/list/bubble views

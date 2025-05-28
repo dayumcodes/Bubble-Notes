@@ -118,6 +118,36 @@
     --orbit-orbiting-bg-dark: 240 40% 20%; /* Dark Blue/Purple */
     --orbit-orbiting-text-dark: 220 30% 85%; /* Light Grey/Blue text */
     --orbit-orbiting-glow-dark: 250 50% 45%; /* Subtle Purple/Blue glow */
+
+    /* Custom variables for orbiting note levels (L1 & L2 specific styling) */
+    /* Dark Theme Values (based on previously hardcoded values) */
+    --orbit-level-bg-dark: 230 17% 14%; /* approx #232946 */
+    --orbit-level-border-dark: 226 96% 63%; /* approx #4b6bfb */
+    --orbit-level-hover-bg-dark: 225 48% 38%; /* approx #334e8c */
+    --orbit-level-text-dark: 0 0% 100%; /* white */
+
+    /* Light Theme Values (these are placeholders, might need design input for better light theme appearance) */
+    --orbit-level-bg-light: 220 30% 92%; /* A very light blue, placeholder */
+    --orbit-level-border-light: 226 80% 70%; /* A lighter, less saturated version of the dark border */
+    --orbit-level-hover-bg-light: 225 50% 85%; /* A lighter hover, placeholder */
+    --orbit-level-text-light: 230 50% 20%; /* Dark text for light background */
+  }
+
+  .dark {
+    /* ... other dark theme variables ... */
+    --orbit-level-bg: var(--orbit-level-bg-dark);
+    --orbit-level-border: var(--orbit-level-border-dark);
+    --orbit-level-hover-bg: var(--orbit-level-hover-bg-dark);
+    --orbit-level-text: var(--orbit-level-text-dark);
+  }
+
+  /* Applied to :root for light theme, and overridden in .dark */
+  :root {
+    /* ... other root variables ... */
+    --orbit-level-bg: var(--orbit-level-bg-light);
+    --orbit-level-border: var(--orbit-level-border-light);
+    --orbit-level-hover-bg: var(--orbit-level-hover-bg-light);
+    --orbit-level-text: var(--orbit-level-text-light);
   }
 }
 
@@ -270,13 +300,27 @@
   background-color: hsl(var(--orbit-central-bg-light));
   color: hsl(var(--orbit-central-text-light));
   box-shadow: 0 0 25px 8px hsl(var(--orbit-central-glow-light) / 0.7);
+  /* Note: text color for central note is already themeable by orbit-central-text-light/dark */
 }
 .dark .orbit-note-central {
   background-color: hsl(var(--orbit-central-bg-dark));
   color: hsl(var(--orbit-central-text-dark));
   box-shadow: 0 0 25px 8px hsl(var(--orbit-central-glow-dark) / 0.7);
 }
-.orbit-note-orbiting {
+
+/* This class can serve as a base for L1/L2 if common properties exist beyond color */
+.orbit-note-orbiting-base {
+  @apply rounded-full flex flex-col items-center justify-center text-center transition-colors duration-200 font-sans;
+  /* Base text color, border, and background will be applied by specific L1/L2 classes using new CSS vars */
+  /* Example: color: hsl(var(--orbit-level-text)); etc. in NoteCard.tsx */
+}
+
+/* The old .orbit-note-orbiting might be redundant if L1/L2 cover all orbiting cases now.
+   Or it can be a fallback / generic style.
+   For now, I'm leaving it as is, as NoteCard.tsx does not use this class name directly for L1/L2.
+   It uses orbit-note-orbiting-l1 and orbit-note-orbiting-l2 which are defined with Tailwind in JSX.
+*/
+.orbit-note-orbiting { /* Existing generic style for an orbiting note if not L1/L2 */
   @apply rounded-full flex flex-col items-center justify-center text-center;
   width: 8rem; /* 128px */
   height: 8rem; /* 128px */
@@ -290,5 +334,4 @@
   color: hsl(var(--orbit-orbiting-text-dark));
   box-shadow: 0 0 15px 4px hsl(var(--orbit-orbiting-glow-dark) / 0.6);
 }
-    
 
