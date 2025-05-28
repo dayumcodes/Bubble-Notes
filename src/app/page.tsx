@@ -727,7 +727,7 @@ export default function HomePage() {
           onClick={openAddModal}
           aria-label="Add new note (Ctrl+N)"
           title="Add new note (Ctrl+N)"
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full w-16 h-16 flex items-center justify-center bg-gradient-to-br from-yellow-300 via-orange-400 to-pink-400 shadow-2xl shadow-yellow-200/40 dark:shadow-yellow-500/30 border-4 border-white/40 dark:border-black/40 text-white text-4xl hover:scale-110 active:scale-95 transition-transform focus:outline-none focus:ring-4 focus:ring-yellow-300/60 animate-pulseDot"
+          className="fixed bottom-8 inset-x-0 mx-auto z-50 rounded-full w-16 h-16 flex items-center justify-center bg-gradient-to-br from-yellow-300 via-orange-400 to-pink-400 shadow-2xl shadow-yellow-200/40 dark:shadow-yellow-500/30 border-4 border-white/40 dark:border-black/40 text-white text-4xl hover:scale-110 active:scale-95 transition-transform focus:outline-none focus:ring-4 focus:ring-yellow-300/60 animate-pulseDot"
           whileHover={{ scale: 1.12, boxShadow: "0 0 40px 10px #fbbf24aa" }}
           whileTap={{ scale: 0.95 }}
           type="button"
