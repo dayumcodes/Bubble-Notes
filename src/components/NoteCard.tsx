@@ -8,6 +8,7 @@ import { Pencil, Trash2, PinOff, Archive, Undo2 } from "lucide-react"; // Pin ic
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { RichTextEditor, initialValue as richTextInitialValue } from "@/components/RichTextEditor";
 
 interface NoteCardProps {
   note: Note;
@@ -24,6 +25,7 @@ interface NoteCardProps {
   className?: string; 
   style?: React.CSSProperties; 
   customBgColor?: string; // HEX or CSS color for grid/list
+  onDuplicate?: () => void;
 }
 
 const highlightText = (text: string | null | undefined, highlight: string | null | undefined) => {
@@ -50,6 +52,12 @@ const highlightText = (text: string | null | undefined, highlight: string | null
   );
 };
 
+// Type guard for Slate element array
+function isSlateElementArray(val: any): val is { type: string; children: any[] }[] {
+  return Array.isArray(val) && val.length > 0 && val.every(
+    (el: any) => el && typeof el === 'object' && typeof el.type === 'string' && Array.isArray(el.children)
+  );
+}
 
 export function NoteCard({
   note,
@@ -65,7 +73,8 @@ export function NoteCard({
   onClickOrbitingNote,
   className,
   style,
-  customBgColor
+  customBgColor,
+  onDuplicate
 }: NoteCardProps) {
   const formattedTimestamp = new Date(note.timestamp).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -173,6 +182,11 @@ export function NoteCard({
             <Button variant="ghost" size="icon" onClick={() => onTogglePin?.(note.id)} aria-label={note.isPinned ? "Unpin note" : "Pin note"} title={note.isPinned ? "Unpin note" : "Pin note"} className={cn("h-7 w-7 p-1 text-foreground/80 hover:text-foreground rounded-full", note.isPinned ? "text-primary hover:text-primary/80" : "hover:bg-accent/30")}> {note.isPinned ? <PinOff className="h-4 w-4" /> : <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17s-4-3-4-6 4-6 4-6 4 3 4 6-4 6-4 6z"/><path d="M9 17v-2.218a3 3 0 0 1 .307-1.37L12 9l2.693 4.412a3 3 0 0 1 .307 1.37V17"/><path d="M12 22v-5"/></svg>} </Button>
             <Button variant="ghost" size="icon" onClick={() => onEdit(note)} aria-label="Edit note" title="Edit note" className="h-7 w-7 p-1 text-foreground/80 hover:text-foreground hover:bg-accent/30 rounded-full"> <Pencil className="h-4 w-4" /> </Button>
             <Button variant="ghost" size="icon" onClick={() => onMoveToTrash?.(note.id)} aria-label="Move to trash" title="Move to trash" className="h-7 w-7 p-1 text-foreground/80 hover:text-amber-600 hover:bg-amber-500/20 rounded-full"> <Archive className="h-4 w-4" /> </Button>
+            {(layout === 'grid' || layout === 'list') && (
+              <Button variant="ghost" size="icon" onClick={onDuplicate} aria-label="Duplicate note" title="Duplicate note" className="h-7 w-7 p-1 text-foreground/80 hover:text-blue-600 hover:bg-blue-500/20 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </Button>
+            )}
           </>
         )}
       </div>
@@ -188,11 +202,27 @@ export function NoteCard({
         
         <p className={cn("text-xs mb-3", isTrashed ? "text-muted-foreground/50" : "text-muted-foreground")}>{formattedTimestamp}</p>
 
-        {note.content && (
-          <p className={cn("whitespace-pre-wrap text-sm flex-grow break-words", isTrashed ? "text-foreground/50 line-through" : "text-foreground/90")}>
-            {shouldHighlight ? highlightText(note.content, searchTerm) : note.content}
-          </p>
-        )}
+        {/* Render rich text content if possible, fallback to plain text */}
+        {(() => {
+          let parsed: any = undefined;
+          try {
+            parsed = note.content ? JSON.parse(note.content) : undefined;
+          } catch {}
+          if (isSlateElementArray(parsed)) {
+            return (
+              <div className="mb-2">
+                <RichTextEditor value={parsed as any} onChange={() => {}} readOnly className="pointer-events-none select-text text-sm" />
+              </div>
+            );
+          } else {
+            // fallback to empty Slate value
+            return (
+              <div className="mb-2">
+                <RichTextEditor value={richTextInitialValue} onChange={() => {}} readOnly className="pointer-events-none select-text text-sm" />
+              </div>
+            );
+          }
+        })()}
         {!note.content && <div className="flex-grow"></div>} {/* Spacer */}
         
         {note.tags && note.tags.length > 0 && !isTrashed && (

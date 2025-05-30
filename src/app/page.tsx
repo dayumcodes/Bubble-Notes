@@ -9,7 +9,7 @@ import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog"
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Filter, ListChecks, Trash2, Atom } from "lucide-react";
+import { Search, Plus, LayoutGrid, List, Droplets, XCircle, Filter, ListChecks, Trash2, Atom, Globe2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BubbleViewContainer } from "@/components/BubbleViewContainer";
 import { Separator } from "@/components/ui/separator";
@@ -27,8 +27,9 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import React from "react";
 import { motion } from "framer-motion";
 import { HexColorPicker } from "react-colorful";
+import dynamic from 'next/dynamic';
 
-type LayoutMode = 'bubble' | 'grid' | 'list';
+type LayoutMode = 'bubble' | 'grid' | 'list' | 'orbit';
 
 const THEME_DEFAULT_PALETTE_NAME = 'Theme Default';
 const CUSTOM_PALETTE_NAME = 'Custom';
@@ -65,6 +66,28 @@ const DEFAULT_CUSTOM_PALETTE: BubblePaletteConfig = {
   glow2: '210 60% 90%',
 };
 
+// Helper to schedule a notification
+function scheduleReminderNotification(note: Note, reminderTime: number) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  const now = Date.now();
+  const delay = reminderTime - now;
+  if (delay <= 0) return;
+  setTimeout(() => {
+    new Notification('Note Reminder', {
+      body: note.title,
+      tag: `note-reminder-${note.id}-${reminderTime}`,
+    });
+  }, delay);
+}
+
+// Fix dynamic import for named export and prop typing
+const Orbit3DViewContainerDynamic = dynamic(
+  () => import('@/components/Orbit3DViewContainer').then(mod => mod.Orbit3DViewContainer),
+  { ssr: false }
+);
+const Orbit3DViewContainer: React.FC<any> = (props) => <Orbit3DViewContainerDynamic {...props} />;
+
 export default function HomePage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -76,8 +99,18 @@ export default function HomePage() {
   const [noteIdForPermanentDelete, setNoteIdForPermanentDelete] = useState<string | null>(null);
 
   const [layout, setLayout] = useState<LayoutMode>('bubble');
-  const [selectedPaletteName, setSelectedPaletteName] = useState<string>(THEME_DEFAULT_PALETTE_NAME);
-  const [customBubblePalette, setCustomBubblePalette] = useState<BubblePaletteConfig>(DEFAULT_CUSTOM_PALETTE);
+  const [paletteByView, setPaletteByView] = useState<Record<LayoutMode, string>>({
+    bubble: THEME_DEFAULT_PALETTE_NAME,
+    grid: THEME_DEFAULT_PALETTE_NAME,
+    list: THEME_DEFAULT_PALETTE_NAME,
+    orbit: THEME_DEFAULT_PALETTE_NAME,
+  });
+  const [customPaletteByView, setCustomPaletteByView] = useState<Record<LayoutMode, BubblePaletteConfig>>({
+    bubble: DEFAULT_CUSTOM_PALETTE,
+    grid: DEFAULT_CUSTOM_PALETTE,
+    list: DEFAULT_CUSTOM_PALETTE,
+    orbit: DEFAULT_CUSTOM_PALETTE,
+  });
   const [isMounted, setIsMounted] = useState(false);
   const [showTrashedNotes, setShowTrashedNotes] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -107,7 +140,7 @@ export default function HomePage() {
     setNotes(parsedNotes);
 
     const storedLayout = localStorage.getItem(LAYOUT_KEY) as LayoutMode | null;
-    if (storedLayout && ['bubble', 'grid', 'list'].includes(storedLayout)) {
+    if (storedLayout && ['bubble', 'grid', 'list', 'orbit'].includes(storedLayout)) {
       setLayout(storedLayout);
     } else {
       setLayout('bubble');
@@ -115,9 +148,9 @@ export default function HomePage() {
 
     const storedPaletteName = localStorage.getItem(PALETTE_NAME_KEY);
     if (storedPaletteName && bubblePalettes.some(p => p.name === storedPaletteName)) {
-      setSelectedPaletteName(storedPaletteName);
+      setPaletteByView(prev => ({ ...prev, [layout]: storedPaletteName }));
     } else {
-      setSelectedPaletteName(THEME_DEFAULT_PALETTE_NAME);
+      setPaletteByView(prev => ({ ...prev, [layout]: THEME_DEFAULT_PALETTE_NAME }));
     }
 
     const storedCustomPalette = localStorage.getItem(CUSTOM_PALETTE_CONFIG_KEY);
@@ -125,14 +158,14 @@ export default function HomePage() {
       try {
         const parsedCustomPalette = JSON.parse(storedCustomPalette);
         if (parsedCustomPalette.name === CUSTOM_PALETTE_NAME) {
-          setCustomBubblePalette(parsedCustomPalette);
+          setCustomPaletteByView(prev => ({ ...prev, [layout]: parsedCustomPalette }));
         }
       } catch (error) {
         console.error("Failed to parse custom bubble palette from localStorage:", error);
-        setCustomBubblePalette(DEFAULT_CUSTOM_PALETTE);
+        setCustomPaletteByView(prev => ({ ...prev, [layout]: DEFAULT_CUSTOM_PALETTE }));
       }
     } else {
-       setCustomBubblePalette(DEFAULT_CUSTOM_PALETTE);
+       setCustomPaletteByView(prev => ({ ...prev, [layout]: DEFAULT_CUSTOM_PALETTE }));
     }
 
   }, []);
@@ -149,13 +182,13 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isMounted) return;
-    localStorage.setItem(PALETTE_NAME_KEY, selectedPaletteName);
-  }, [selectedPaletteName, isMounted]);
+    localStorage.setItem(PALETTE_NAME_KEY, paletteByView[layout]);
+  }, [paletteByView, layout, isMounted]);
 
   useEffect(() => {
-    if (!isMounted || selectedPaletteName !== CUSTOM_PALETTE_NAME) return;
-    localStorage.setItem(CUSTOM_PALETTE_CONFIG_KEY, JSON.stringify(customBubblePalette));
-  }, [customBubblePalette, selectedPaletteName, isMounted]);
+    if (!isMounted || paletteByView[layout] !== CUSTOM_PALETTE_NAME) return;
+    localStorage.setItem(CUSTOM_PALETTE_CONFIG_KEY, JSON.stringify(customPaletteByView[layout]));
+  }, [customPaletteByView, layout, isMounted]);
 
   const openAddModal = useCallback(() => {
     setEditingNote(null);
@@ -238,7 +271,7 @@ export default function HomePage() {
   const handleRestoreFromTrash = (noteId: string) => {
     setNotes(prevNotes =>
       prevNotes.map(note =>
-        note.id === noteId ? { ...note, status: 'active', timestamp: Date.now() } : note
+        note.id === noteId ? { ...note, status: 'active' as 'active', timestamp: Date.now() } : note
       ).sort((a, b) => {
         if (a.status === 'active' && b.status !== 'active') return -1;
         if (a.status !== 'active' && b.status === 'active') return 1;
@@ -301,13 +334,16 @@ export default function HomePage() {
       const glows = deriveGlowColors(newBgHsl);
 
       if (newTextHsl) {
-        setCustomBubblePalette({
-          name: CUSTOM_PALETTE_NAME,
-          bg: formatHslString(newBgHsl),
-          text: formatHslString(newTextHsl),
-          glow1: glows.glow1,
-          glow2: glows.glow2,
-        });
+        setCustomPaletteByView(prev => ({
+          ...prev,
+          [layout]: {
+            name: CUSTOM_PALETTE_NAME,
+            bg: formatHslString(newBgHsl),
+            text: formatHslString(newTextHsl),
+            glow1: glows.glow1,
+            glow2: glows.glow2,
+          },
+        }));
       }
     }
   };
@@ -352,16 +388,16 @@ export default function HomePage() {
       });
 
   let activePaletteConfigResolved: BubblePaletteConfig | undefined;
-  if (selectedPaletteName === CUSTOM_PALETTE_NAME) {
-    activePaletteConfigResolved = customBubblePalette;
-  } else if (selectedPaletteName === THEME_DEFAULT_PALETTE_NAME) {
+  if (paletteByView[layout] === CUSTOM_PALETTE_NAME) {
+    activePaletteConfigResolved = customPaletteByView[layout];
+  } else if (paletteByView[layout] === THEME_DEFAULT_PALETTE_NAME) {
      activePaletteConfigResolved = { name: THEME_DEFAULT_PALETTE_NAME, bg: '', text: '', glow1: '', glow2: ''};
   } else {
-    activePaletteConfigResolved = bubblePalettes.find(p => p.name === selectedPaletteName) as BubblePaletteConfig;
+    activePaletteConfigResolved = bubblePalettes.find(p => p.name === paletteByView[layout]) as BubblePaletteConfig;
   }
 
   const bubbleViewDynamicStyles =
-    activePaletteConfigResolved && selectedPaletteName !== THEME_DEFAULT_PALETTE_NAME
+    activePaletteConfigResolved && paletteByView[layout] !== THEME_DEFAULT_PALETTE_NAME
       ? {
           '--user-bubble-bg': activePaletteConfigResolved.bg,
           '--user-bubble-text': activePaletteConfigResolved.text,
@@ -370,7 +406,7 @@ export default function HomePage() {
         }
       : {};
 
-  const currentCustomBgHex = isMounted && customBubblePalette?.bg ? hslToHex(parseHslString(customBubblePalette.bg)!) : '#cccccc';
+  const currentCustomBgHex = isMounted && customPaletteByView[layout]?.bg ? hslToHex(parseHslString(customPaletteByView[layout].bg)!) : '#cccccc';
 
   const allUniqueActiveTags = useMemo(() => {
     if (showTrashedNotes) return [];
@@ -384,6 +420,39 @@ export default function HomePage() {
       });
     return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
   }, [notes, showTrashedNotes]);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Schedule notifications for all reminders
+  useEffect(() => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    notes.forEach(note => {
+      if (Array.isArray(note.reminders)) {
+        note.reminders.forEach(reminderTime => {
+          if (reminderTime > Date.now()) {
+            scheduleReminderNotification(note, reminderTime);
+          }
+        });
+      }
+    });
+  }, [notes]);
+
+  // Add duplicate note handler
+  const handleDuplicateNote = (note: Note) => {
+    const newNote: Note = {
+      ...note,
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      isPinned: false,
+      status: 'active',
+    };
+    setNotes((prevNotes) => [newNote, ...prevNotes]);
+  };
 
   if (!isMounted) {
     return (
@@ -424,18 +493,18 @@ export default function HomePage() {
         </div>
       </div>
 
-      {(layout === 'bubble' || layout === 'grid' || layout === 'list') && !showTrashedNotes && (
+      {(layout === 'bubble' || layout === 'grid' || layout === 'list' || layout === 'orbit') && !showTrashedNotes && (
         <>
           <Separator />
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">Palette</h3>
-             <p className="text-xs text-muted-foreground mb-2">Applies to {layout.charAt(0).toUpperCase() + layout.slice(1)} View.</p>
+            <p className="text-xs text-muted-foreground mb-2">Applies to {layout.charAt(0).toUpperCase() + layout.slice(1)} View.</p>
             <div className="flex flex-wrap justify-center gap-2">
               {bubblePalettes.map((palette) => {
-                const isActive = selectedPaletteName === palette.name;
+                const isActive = paletteByView[layout] === palette.name;
                 let previewColor = palette.bg;
-                if (palette.name === CUSTOM_PALETTE_NAME && customBubblePalette) {
-                  previewColor = customBubblePalette.bg;
+                if (palette.name === CUSTOM_PALETTE_NAME && customPaletteByView[layout]) {
+                  previewColor = customPaletteByView[layout].bg;
                 } else if (palette.name === THEME_DEFAULT_PALETTE_NAME) {
                   previewColor = 'var(--primary)';
                 }
@@ -445,7 +514,7 @@ export default function HomePage() {
                     key={palette.name}
                     variant={isActive ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedPaletteName(palette.name)}
+                    onClick={() => setPaletteByView(prev => ({ ...prev, [layout]: palette.name }))}
                     className={cn(
                       "p-2 h-auto rounded-full w-10 h-10 modern-filter-button data-[state=active]:modern-filter-button-active data-[state=active]:ring-2 data-[state=active]:ring-offset-2 data-[state=active]:ring-primary",
                       palette.name === THEME_DEFAULT_PALETTE_NAME && isActive ? { backgroundColor: `hsl(${previewColor})`, color: 'hsl(var(--primary-foreground))' } : {}
@@ -467,7 +536,7 @@ export default function HomePage() {
                 );
               })}
             </div>
-            {selectedPaletteName === CUSTOM_PALETTE_NAME && (
+            {paletteByView[layout] === CUSTOM_PALETTE_NAME && (
               <div className={cn(
                   "mt-3 flex flex-col items-center gap-2 p-3 border rounded-md bg-muted/20 backdrop-blur-sm")}>
                 <label htmlFor="custom-bubble-bg" className="text-xs text-muted-foreground">
@@ -555,38 +624,36 @@ export default function HomePage() {
           </div>
           <div className="flex gap-2 items-center">
             <Button
-                variant={layout === 'bubble' ? 'secondary' : 'outline'}
-                size="icon"
-                onClick={() => setLayout('bubble')}
-                aria-label="Bubble view"
-                title="Bubble View"
-                disabled={showTrashedNotes}
-                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
-                data-state={layout === 'bubble' ? 'active' : 'inactive'}
+              variant={layout === 'bubble' ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setLayout('bubble')}
+              aria-label="Bubble View"
             >
-                <Droplets className="h-5 w-5" />
+              <Droplets className="w-5 h-5" />
             </Button>
             <Button
-                variant={layout === 'grid' ? 'secondary' : 'outline'}
-                size="icon"
-                onClick={() => setLayout('grid')}
-                aria-label="Grid view"
-                title="Grid View"
-                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
-                data-state={layout === 'grid' ? 'active' : 'inactive'}
+              variant={layout === 'grid' ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setLayout('grid')}
+              aria-label="Grid View"
             >
-                <LayoutGrid className="h-5 w-5" />
+              <LayoutGrid className="w-5 h-5" />
             </Button>
             <Button
-                variant={layout === 'list' ? 'secondary' : 'outline'}
-                size="icon"
-                onClick={() => setLayout('list')}
-                aria-label="List view"
-                title="List View"
-                className="modern-filter-button rounded-full shadow-lg bg-background/70 backdrop-blur-sm data-[state=active]:modern-filter-button-active"
-                data-state={layout === 'list' ? 'active' : 'inactive'}
+              variant={layout === 'list' ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setLayout('list')}
+              aria-label="List View"
             >
-                <List className="h-5 w-5" />
+              <List className="w-5 h-5" />
+            </Button>
+            <Button
+              variant={layout === 'orbit' ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setLayout('orbit')}
+              aria-label="3D Orbit View"
+            >
+              <Globe2 className="w-5 h-5" />
             </Button>
             <Popover open={isFiltersPopoverOpen} onOpenChange={(open) => {
               if (!colorInputRecentlyClicked.current) setIsFiltersPopoverOpen(open);
@@ -641,55 +708,65 @@ export default function HomePage() {
           </div>
         )}
 
-        {layout === 'bubble' && !showTrashedNotes ? (
+        {(layout === 'bubble') && !showTrashedNotes && (
           <BubbleViewContainer
             notes={activeNotesForViews}
             onEditNote={openEditModal}
-            dynamicStyle={bubbleViewDynamicStyles}
+            dynamicStyle={bubbleViewDynamicStyles as React.CSSProperties}
           />
-        ) : layout === 'grid' && !showTrashedNotes ? (
+        )}
+        {(layout === 'grid') && !showTrashedNotes && (
           <div className={cn("gap-6 animate-fadeIn grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}
-            style={bubbleViewDynamicStyles}
+            style={bubbleViewDynamicStyles as React.CSSProperties}
           >
-            {filteredNotes.map((note) => (
+            {activeNotesForViews.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
-                searchTerm={searchTerm}
-                onEdit={openEditModal}
-                onTogglePin={handleTogglePin}
+                onEdit={() => openEditModal(note)}
+                onMoveToTrash={() => handleMoveToTrash(note.id)}
+                onTogglePin={() => handleTogglePin(note.id)}
+                onRestoreFromTrash={() => handleRestoreFromTrash(note.id)}
+                onDeletePermanently={() => requestPermanentDelete(note.id)}
                 onTagClick={handleTagClick}
+                searchTerm={searchTerm}
                 layout={layout}
-                onMoveToTrash={handleMoveToTrash}
-                onRestoreFromTrash={handleRestoreFromTrash}
-                onDeletePermanently={requestPermanentDelete}
-                orbitViewStyle={null}
-                customBgColor={currentCustomBgHex}
+                onDuplicate={() => handleDuplicateNote(note)}
               />
             ))}
           </div>
-        ) : layout === 'list' && !showTrashedNotes ? (
+        )}
+        {(layout === 'list') && !showTrashedNotes && (
           <div className={cn("gap-6 animate-fadeIn flex flex-col")}
-            style={bubbleViewDynamicStyles}
+            style={bubbleViewDynamicStyles as React.CSSProperties}
           >
-            {filteredNotes.map((note) => (
+            {activeNotesForViews.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}
-                searchTerm={searchTerm}
-                onEdit={openEditModal}
-                onTogglePin={handleTogglePin}
+                onEdit={() => openEditModal(note)}
+                onMoveToTrash={() => handleMoveToTrash(note.id)}
+                onTogglePin={() => handleTogglePin(note.id)}
+                onRestoreFromTrash={() => handleRestoreFromTrash(note.id)}
+                onDeletePermanently={() => requestPermanentDelete(note.id)}
                 onTagClick={handleTagClick}
+                searchTerm={searchTerm}
                 layout={layout}
-                onMoveToTrash={handleMoveToTrash}
-                onRestoreFromTrash={handleRestoreFromTrash}
-                onDeletePermanently={requestPermanentDelete}
-                orbitViewStyle={null}
-                customBgColor={currentCustomBgHex}
+                onDuplicate={() => handleDuplicateNote(note)}
               />
             ))}
           </div>
-        ) : (
+        )}
+        {(layout === 'orbit') && !showTrashedNotes && (
+          <Orbit3DViewContainer 
+            notes={activeNotesForViews}
+            onEditNote={openEditModal}
+            palette={activePaletteConfigResolved!}
+            dynamicStyle={bubbleViewDynamicStyles as React.CSSProperties}
+            onDuplicate={handleDuplicateNote}
+          />
+        )}
+        {((layout !== 'bubble' && layout !== 'grid' && layout !== 'list' && layout !== 'orbit') || showTrashedNotes) && (
           filteredNotes.length > 0 ? (
             <div className={cn(
               "gap-6 animate-fadeIn",
@@ -703,7 +780,7 @@ export default function HomePage() {
                   onEdit={openEditModal}
                   onTogglePin={handleTogglePin}
                   onTagClick={handleTagClick}
-                  layout={layout}
+                  layout={layout === 'orbit' ? 'orbit' : layout}
                   onMoveToTrash={handleMoveToTrash}
                   onRestoreFromTrash={handleRestoreFromTrash}
                   onDeletePermanently={requestPermanentDelete}
